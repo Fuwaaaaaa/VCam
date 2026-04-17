@@ -34,10 +34,10 @@ export async function loadVRMFromUrl(url: string): Promise<VRMLoadResult> {
 }
 
 /**
- * 現在の VRM をシーンから外しリソース解放する。
+ * 現在の VRM を親 (Scene or Group) から外しリソース解放する。
  * 新しい VRM に差し替える前に呼ぶ。
  */
-export function disposeVRM(scene: THREE.Scene, vrm: VRM): void {
-  scene.remove(vrm.scene);
+export function disposeVRM(parent: THREE.Object3D, vrm: VRM): void {
+  parent.remove(vrm.scene);
   VRMUtils.deepDispose(vrm.scene);
 }

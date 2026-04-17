@@ -14,7 +14,11 @@ import { createStatus } from './ui/status';
 import { wireDropZone } from './ui/dropZone';
 import { wireControls } from './ui/controls';
 import { wireSettingsPanel } from './ui/settingsPanel';
+import { wirePeerPanel } from './ui/peerPanel';
 import { loadSettings, saveSettings, clearSettings, DEFAULT_SETTINGS } from './core/storage/settings';
+import { createPeerSession } from './core/net/peerSession';
+import { encodeMessage } from './core/net/rigSerialize';
+import { RemoteAvatarScene } from './core/avatar/remoteAvatar';
 
 // ==================== Settings (Phase 4) ====================
 const settings: Settings = loadSettings();
@@ -78,12 +82,58 @@ window.addEventListener('resize', () => {
 let currentVRM: VRM | null = null;
 let latestFaceRig: FaceRig | null = null;
 let latestPoseRig: PoseRig | null = null;
+let latestHipPos: { x: number; y: number } | null = null;
 
 const faceFilters = createRigFilterSet();
 const poseFilters = createPoseFilterSet();
 const mic = new MicTracker();
 
 const MIRROR_WEBCAM = true;
+
+// ==================== Phase E: Multiverse ====================
+// currentVrmUrl が無いときは public/samples のプレースホルダを使う。
+// まだロード前のピアが来た場合は現在の自分の VRM を複製して表示。
+const remoteScene = new RemoteAvatarScene(scene, '/samples/sample.vrm');
+
+const peerUI = wirePeerPanel(
+  {
+    panel:        $<HTMLElement>('multiverse'),
+    ownIdInput:   $<HTMLInputElement>('own-peer-id'),
+    copyBtn:      $<HTMLButtonElement>('copy-peer-id'),
+    peerIdInput:  $<HTMLInputElement>('peer-id'),
+    connectBtn:   $<HTMLButtonElement>('connect-peer'),
+    peersList:    $<HTMLElement>('peers-list'),
+  },
+  {
+    onConnect:    (id) => peer.connectTo(id),
+    onDisconnect: (id) => peer.disconnectFrom(id),
+  },
+);
+
+const peer = createPeerSession({
+  onOwnId: (id) => {
+    peerUI.setOwnId(id);
+    console.log('[peer] own id:', id);
+  },
+  onPeerConnect: async (id) => {
+    await remoteScene.addPeer(id);
+    peerUI.addPeer(id);
+    status.set(`ピアが接続: <code>${id.slice(0, 8)}…</code>`);
+  },
+  onPeerDisconnect: (id) => {
+    remoteScene.removePeer(id);
+    peerUI.removePeer(id);
+  },
+  onPeerMessage: (id, msg) => {
+    remoteScene.receive(id, msg);
+    if (msg.hipPos !== undefined) { /* 追加: タイムスタンプ記録など将来 */ }
+  },
+  onError: (err) => console.warn('[peer] error:', err),
+});
+
+// 送信は 20 Hz (50ms) に絞る (WebRTC data channel 負荷軽減)
+const SEND_INTERVAL_MS = 50;
+let lastSendAt = 0;
 
 // ==================== VRM loading ====================
 async function loadVRM(url: string, label?: string): Promise<void> {
@@ -93,6 +143,7 @@ async function loadVRM(url: string, label?: string): Promise<void> {
     if (currentVRM) disposeVRM(scene, currentVRM);
     scene.add(vrm.scene);
     currentVRM = vrm;
+    remoteScene.setVrmUrl(url);
     status.set(`VRM 読込完了: <b>${displayName}</b> (VRM ${versionLabel})`);
   } catch (e) {
     status.set(`VRM 読込失敗: ${(e as Error).message}`);
@@ -195,12 +246,30 @@ function animate(): void {
         poseFilters,
         now,
       );
+      latestHipPos = hipPos;
       applyHipPosition(currentVRM, hipPos, toggles.smooth);
     } else {
+      latestHipPos = null;
       applyHipPosition(currentVRM, null, toggles.smooth);
     }
     currentVRM.update(dt);
   }
+
+  // リモートアバター更新
+  remoteScene.tick(performance.now() / 1000, dt);
+
+  // ピアへのブロードキャスト (20 Hz)
+  const nowMs = performance.now();
+  if (peer.connectedPeers().length > 0 && nowMs - lastSendAt >= SEND_INTERVAL_MS) {
+    lastSendAt = nowMs;
+    peer.send(encodeMessage({
+      face: latestFaceRig,
+      pose: toggles.pose ? latestPoseRig : null,
+      hipPos: latestHipPos,
+      micLevel: mic.level,
+    }));
+  }
+
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }

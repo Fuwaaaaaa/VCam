@@ -34,6 +34,16 @@ export type Settings = {
 /** Kalidokit.Pose.solve の返り値のサブセット (上半身のみ使用) */
 export type Vector3 = { x: number; y: number; z: number };
 
+/** Phase E: ピア間で送受信する最小メッセージ形式 */
+export type PeerMessageV1 = {
+  v: 1;
+  t: number;              // タイムスタンプ (ms)
+  face?: FaceRig | null;
+  pose?: PoseRig | null;
+  hipPos?: { x: number; y: number } | null;
+  micLevel?: number;
+};
+
 export type PoseRig = {
   Hips?: { position?: Vector3; rotation?: Vector3 };
   Spine?: Vector3;

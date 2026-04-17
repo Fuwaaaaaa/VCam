@@ -24,6 +24,17 @@
     #settings input[type=checkbox] { margin-right: 6px; }
     #settings button { background: #2a2a2a; color: #eee; border: 1px solid #555; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; margin-top: 10px; }
     #settings button:hover { background: #3a3a3a; }
+    #multiverse { bottom: 100px; right: 12px; min-width: 260px; }
+    #multiverse details { margin: -10px -14px; padding: 10px 14px; }
+    #multiverse details[open] { padding-bottom: 14px; }
+    #multiverse summary { cursor: pointer; user-select: none; font-weight: 600; }
+    #multiverse .row { display: flex; gap: 4px; margin-top: 8px; font-size: 12px; }
+    #multiverse input[type=text] { flex: 1; background: #1a1a1a; color: #eee; border: 1px solid #555; border-radius: 3px; padding: 4px 6px; font-size: 11px; font-family: ui-monospace, monospace; }
+    #multiverse button { background: #2a2a2a; color: #eee; border: 1px solid #555; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+    #multiverse button:hover { background: #3a3a3a; }
+    #multiverse #peers-list { margin-top: 8px; font-size: 12px; display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto; }
+    #multiverse .peer-row { display: flex; justify-content: space-between; align-items: center; background: #1f1f1f; padding: 3px 6px; border-radius: 3px; }
+    #multiverse .peer-row button { padding: 0 6px; font-size: 11px; }
     #controls button { background: #2a2a2a; color: #eee; border: 1px solid #555; border-radius: 4px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
     #controls button:hover { background: #3a3a3a; }
     #controls button.active { background: #2a6b4a; border-color: #4a9; }
@@ -73,6 +84,21 @@
         <label><input type="checkbox" id="transparentBg"> 透過背景 (Phase F)</label>
       </div>
       <button id="reset-settings" type="button">既定値にリセット</button>
+    </details>
+  </div>
+
+  <div id="multiverse" class="panel">
+    <details>
+      <summary>🌐 マルチバース (Phase E)</summary>
+      <div class="row">
+        <input type="text" id="own-peer-id" readonly placeholder="接続中…">
+        <button id="copy-peer-id" type="button" title="自分の ID をコピー">📋</button>
+      </div>
+      <div class="row">
+        <input type="text" id="peer-id" placeholder="相手の Peer ID">
+        <button id="connect-peer" type="button">接続</button>
+      </div>
+      <div id="peers-list"></div>
     </details>
   </div>
 
