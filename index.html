@@ -14,6 +14,16 @@
     #drop-zone.dragging { border-color: #4a9; background: rgba(0, 60, 40, 0.7); }
     #help { bottom: 12px; right: 12px; font-size: 12px; opacity: 0.75; }
     #controls { top: 260px; right: 12px; display: flex; flex-direction: column; gap: 6px; }
+    #settings { top: 260px; left: 12px; min-width: 260px; }
+    #settings details { margin: -10px -14px; padding: 10px 14px; }
+    #settings details[open] { padding-bottom: 14px; }
+    #settings summary { cursor: pointer; user-select: none; font-weight: 600; }
+    #settings .row { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; font-size: 12px; }
+    #settings .row .head { display: flex; justify-content: space-between; align-items: center; }
+    #settings input[type=range] { width: 100%; }
+    #settings input[type=checkbox] { margin-right: 6px; }
+    #settings button { background: #2a2a2a; color: #eee; border: 1px solid #555; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; margin-top: 10px; }
+    #settings button:hover { background: #3a3a3a; }
     #controls button { background: #2a2a2a; color: #eee; border: 1px solid #555; border-radius: 4px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
     #controls button:hover { background: #3a3a3a; }
     #controls button.active { background: #2a6b4a; border-color: #4a9; }
@@ -42,6 +52,28 @@
     <button id="gaze-btn" type="button" class="active" title="目線追従">👀 目線 ON</button>
     <button id="smooth-btn" type="button" class="active" title="One Euro Filter スムージング">〰 スムージング ON</button>
     <button id="pose-btn" type="button" class="active" title="上半身ポーズ追従 (Phase 3-a)">👤 ポーズ ON</button>
+  </div>
+
+  <div id="settings" class="panel">
+    <details>
+      <summary>⚙ 設定</summary>
+      <div class="row">
+        <div class="head"><span>脚の強度</span><span id="legStrength-val">1.00</span></div>
+        <input type="range" id="legStrength" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="row">
+        <div class="head"><span>ヒップ位置強度</span><span id="hipPosStrength-val">0.30</span></div>
+        <input type="range" id="hipPosStrength" min="0" max="1" step="0.05" value="0.3">
+      </div>
+      <div class="row">
+        <div class="head"><span>マイク感度</span><span id="micSensitivity-val">5.0</span></div>
+        <input type="range" id="micSensitivity" min="1" max="15" step="0.5" value="5">
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="transparentBg"> 透過背景 (Phase F)</label>
+      </div>
+      <button id="reset-settings" type="button">既定値にリセット</button>
+    </details>
   </div>
 
   <div id="help" class="panel">

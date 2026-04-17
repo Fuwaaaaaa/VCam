@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { VRM } from '@pixiv/three-vrm';
 
-import type { FaceRig, PoseRig, AppOptions } from './types';
+import type { FaceRig, PoseRig, Settings } from './types';
 import { loadVRMFromUrl, disposeVRM } from './core/avatar/loadVRM';
 import { applyRig } from './core/avatar/applyRig';
 import { computePoseBoneRotations, applyBoneRotations, computeHipPosition, applyHipPosition } from './core/avatar/applyPose';
@@ -13,26 +13,32 @@ import { createTracker } from './core/tracking/tracker';
 import { createStatus } from './ui/status';
 import { wireDropZone } from './ui/dropZone';
 import { wireControls } from './ui/controls';
+import { wireSettingsPanel } from './ui/settingsPanel';
+import { loadSettings, saveSettings, clearSettings, DEFAULT_SETTINGS } from './core/storage/settings';
+
+// ==================== Settings (Phase 4) ====================
+const settings: Settings = loadSettings();
+const save = () => saveSettings(settings);
 
 // ==================== DOM ====================
-const statusEl   = document.getElementById('status')     as HTMLElement;
-const videoEl    = document.getElementById('webcam')     as HTMLVideoElement;
-const dropEl     = document.getElementById('drop-zone')  as HTMLElement;
-const inputEl    = document.getElementById('vrm-input')  as HTMLInputElement;
-const micBtn     = document.getElementById('mic-btn')    as HTMLButtonElement;
-const micMeterEl = document.getElementById('mic-meter')  as HTMLElement;
-const gazeBtn    = document.getElementById('gaze-btn')   as HTMLButtonElement;
-const smoothBtn  = document.getElementById('smooth-btn') as HTMLButtonElement;
-const poseBtn    = document.getElementById('pose-btn')   as HTMLButtonElement;
+const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+const statusEl   = $<HTMLElement>('status');
+const videoEl    = $<HTMLVideoElement>('webcam');
+const dropEl     = $<HTMLElement>('drop-zone');
+const inputEl    = $<HTMLInputElement>('vrm-input');
+const micBtn     = $<HTMLButtonElement>('mic-btn');
+const micMeterEl = $<HTMLElement>('mic-meter');
+const gazeBtn    = $<HTMLButtonElement>('gaze-btn');
+const smoothBtn  = $<HTMLButtonElement>('smooth-btn');
+const poseBtn    = $<HTMLButtonElement>('pose-btn');
 
 const status = createStatus(statusEl);
 status.set('初期化中…');
 
 // ==================== three.js ====================
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x1a1a1a);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
@@ -44,11 +50,23 @@ scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
 dirLight.position.set(1, 2, 1.5);
 scene.add(dirLight);
-scene.add(new THREE.GridHelper(4, 10, 0x444444, 0x333333));
+const grid = new THREE.GridHelper(4, 10, 0x444444, 0x333333);
+scene.add(grid);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 1.3, 0);
 controls.update();
+
+function applyBackgroundMode(): void {
+  if (settings.transparentBg) {
+    renderer.setClearColor(0x000000, 0);
+    grid.visible = false;
+  } else {
+    renderer.setClearColor(0x1a1a1a, 1);
+    grid.visible = true;
+  }
+}
+applyBackgroundMode();
 
 window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -61,19 +79,11 @@ let currentVRM: VRM | null = null;
 let latestFaceRig: FaceRig | null = null;
 let latestPoseRig: PoseRig | null = null;
 
-const opts: AppOptions = { mic: false, gaze: true, smooth: true, pose: true };
 const faceFilters = createRigFilterSet();
 const poseFilters = createPoseFilterSet();
 const mic = new MicTracker();
 
-// Webcam は CSS で scaleX(-1) しているため mirror=true
 const MIRROR_WEBCAM = true;
-
-// Phase 3-b: 脚とヒップ位置の追従強度。
-//  - legStrength: webcam が膝以下を映さないセットアップなら低めに (0.2 程度)
-//  - hipPosStrength: Kalidokit の hip 位置は大きく振れやすいので 0.3 程度
-const LEG_STRENGTH = 1.0;
-const HIP_POS_STRENGTH = 0.3;
 
 // ==================== VRM loading ====================
 async function loadVRM(url: string, label?: string): Promise<void> {
@@ -96,29 +106,65 @@ wireDropZone({
   onInvalid: (reason) => status.set(reason),
 });
 
-// ==================== Controls ====================
+// ==================== Controls (toggles) ====================
 let trackerRef: Awaited<ReturnType<typeof createTracker>> | null = null;
+
+// 初期トグル状態は settings から復元
+const toggles = { ...settings.toggles };
+
 const ctrl = wireControls(
   { micBtn, micMeter: micMeterEl, gazeBtn, smoothBtn, poseBtn },
-  opts,
+  toggles,
   {
     onMicToggle: async (next) => {
       if (next) {
-        try { await mic.enable(); return true; }
+        try { await mic.enable(); settings.toggles.mic = true; save(); return true; }
         catch (e) { status.set(`マイク起動失敗: ${(e as Error).message}`); return false; }
       }
       mic.disable();
+      settings.toggles.mic = false; save();
       return true;
     },
-    onGazeToggle: () => { /* applyRig reads opts.gaze live */ },
-    onSmoothToggle: () => {
+    onGazeToggle: (v) => { settings.toggles.gaze = v; save(); },
+    onSmoothToggle: (v) => {
+      settings.toggles.smooth = v; save();
       resetRigFilterSet(faceFilters);
       resetPoseFilterSet(poseFilters);
     },
-    onPoseToggle: (next) => {
-      trackerRef?.enablePose(next);
-      if (!next) latestPoseRig = null;
+    onPoseToggle: (v) => {
+      settings.toggles.pose = v; save();
+      trackerRef?.enablePose(v);
+      if (!v) latestPoseRig = null;
       resetPoseFilterSet(poseFilters);
+    },
+  },
+);
+
+// ==================== Settings panel (Phase 4) ====================
+const settingsPanel = wireSettingsPanel(
+  {
+    root: $<HTMLElement>('settings'),
+    legStrengthInput:    $<HTMLInputElement>('legStrength'),
+    legStrengthValue:    $<HTMLElement>('legStrength-val'),
+    hipPosStrengthInput: $<HTMLInputElement>('hipPosStrength'),
+    hipPosStrengthValue: $<HTMLElement>('hipPosStrength-val'),
+    micSensitivityInput: $<HTMLInputElement>('micSensitivity'),
+    micSensitivityValue: $<HTMLElement>('micSensitivity-val'),
+    transparentBgInput:  $<HTMLInputElement>('transparentBg'),
+    resetBtn:            $<HTMLButtonElement>('reset-settings'),
+  },
+  settings,
+  {
+    onLegStrength:    (v) => { settings.legStrength    = v; save(); },
+    onHipPosStrength: (v) => { settings.hipPosStrength = v; save(); },
+    onMicSensitivity: (v) => { settings.micSensitivity = v; save(); },
+    onTransparentBg:  (v) => { settings.transparentBg  = v; save(); applyBackgroundMode(); },
+    onReset: () => {
+      Object.assign(settings, DEFAULT_SETTINGS, { toggles: { ...DEFAULT_SETTINGS.toggles } });
+      clearSettings();
+      settingsPanel.refresh(settings);
+      applyBackgroundMode();
+      status.set('設定を既定値にリセットしました');
     },
   },
 );
@@ -127,32 +173,31 @@ const ctrl = wireControls(
 const clock = new THREE.Clock();
 function animate(): void {
   const dt = clock.getDelta();
-  if (opts.mic) {
-    const lv = mic.update();
+  if (toggles.mic) {
+    const lv = mic.update(settings.micSensitivity);
     ctrl.setMicLevel(lv);
   }
   if (currentVRM) {
     const now = performance.now() / 1000;
-    applyRig(currentVRM, latestFaceRig, { ...opts, micLevel: mic.level }, faceFilters, now);
-    if (opts.pose && latestPoseRig) {
+    applyRig(currentVRM, latestFaceRig, { ...toggles, micLevel: mic.level }, faceFilters, now);
+    if (toggles.pose && latestPoseRig) {
       const rotations = computePoseBoneRotations(
         latestPoseRig,
-        { smooth: opts.smooth, mirror: MIRROR_WEBCAM, legStrength: LEG_STRENGTH },
+        { smooth: toggles.smooth, mirror: MIRROR_WEBCAM, legStrength: settings.legStrength },
         poseFilters,
         now,
       );
-      applyBoneRotations(currentVRM, rotations, opts.smooth);
+      applyBoneRotations(currentVRM, rotations, toggles.smooth);
 
       const hipPos = computeHipPosition(
         latestPoseRig,
-        { smooth: opts.smooth, mirror: MIRROR_WEBCAM, hipPosStrength: HIP_POS_STRENGTH },
+        { smooth: toggles.smooth, mirror: MIRROR_WEBCAM, hipPosStrength: settings.hipPosStrength },
         poseFilters,
         now,
       );
-      applyHipPosition(currentVRM, hipPos, opts.smooth);
-    } else if (currentVRM) {
-      // pose OFF の時は hip 位置を 0 にゆっくり戻す
-      applyHipPosition(currentVRM, null, opts.smooth);
+      applyHipPosition(currentVRM, hipPos, toggles.smooth);
+    } else {
+      applyHipPosition(currentVRM, null, toggles.smooth);
     }
     currentVRM.update(dt);
   }
@@ -162,7 +207,6 @@ function animate(): void {
 
 // ==================== Boot ====================
 async function boot(): Promise<void> {
-  // 1. 既定 VRM (samples/sample.vrm) があれば自動読込
   try {
     const resp = await fetch('/samples/sample.vrm', { method: 'HEAD' });
     if (resp.ok) await loadVRM('/samples/sample.vrm', 'samples/sample.vrm');
@@ -171,7 +215,6 @@ async function boot(): Promise<void> {
     status.set('VRM ファイルを画面左下にドラッグ&ドロップしてください。');
   }
 
-  // 2. Face + Pose tracker 起動
   try {
     trackerRef = await createTracker(videoEl, {
       onFaceRig: (rig) => { latestFaceRig = rig; },
@@ -181,7 +224,7 @@ async function boot(): Promise<void> {
         status.set(`トラッキングエラー (${phase}): ${(err as Error).message ?? err}`);
       },
     });
-    trackerRef.enablePose(opts.pose);
+    trackerRef.enablePose(toggles.pose);
     await trackerRef.start();
   } catch (e) {
     status.set(`カメラ起動失敗: ${(e as Error).message}<br />ブラウザのカメラ許可を確認してください。`);

@@ -18,6 +18,19 @@ export type AppOptions = {
   pose: boolean;
 };
 
+/**
+ * 永続化される設定値。localStorage に JSON で保存。
+ * トグル (mic/gaze/smooth/pose) は起動状態を復元、強度/感度は UI スライダから変更。
+ */
+export type Settings = {
+  toggles: AppOptions;
+  legStrength: number;      // 0..1
+  hipPosStrength: number;   // 0..1
+  micSensitivity: number;   // 1..15
+  /** 透過背景 (Phase F) */
+  transparentBg?: boolean;
+};
+
 /** Kalidokit.Pose.solve の返り値のサブセット (上半身のみ使用) */
 export type Vector3 = { x: number; y: number; z: number };
 
