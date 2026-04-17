@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VRM Face Tracking PoC</title>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #1a1a1a; font-family: system-ui, sans-serif; color: #eee; }
+    #webcam-container { position: fixed; top: 12px; right: 12px; width: 240px; z-index: 10; border: 1px solid #444; background: #000; }
+    #webcam { width: 100%; display: block; transform: scaleX(-1); }
+    .panel { position: fixed; background: rgba(0, 0, 0, 0.65); padding: 10px 14px; border-radius: 6px; z-index: 10; font-size: 13px; line-height: 1.5; max-width: 360px; }
+    #status { top: 12px; left: 12px; }
+    #drop-zone { bottom: 12px; left: 12px; border: 1px dashed #666; cursor: pointer; }
+    #drop-zone.dragging { border-color: #4a9; background: rgba(0, 60, 40, 0.7); }
+    #help { bottom: 12px; right: 12px; font-size: 12px; opacity: 0.75; }
+    #controls { top: 260px; right: 12px; display: flex; flex-direction: column; gap: 6px; }
+    #controls button { background: #2a2a2a; color: #eee; border: 1px solid #555; border-radius: 4px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
+    #controls button:hover { background: #3a3a3a; }
+    #controls button.active { background: #2a6b4a; border-color: #4a9; }
+    #controls .meter { height: 6px; background: #222; border: 1px solid #555; border-radius: 3px; overflow: hidden; }
+    #controls .meter > div { height: 100%; background: linear-gradient(to right, #4a9, #ac4); width: 0%; transition: width 60ms linear; }
+    kbd { background: #333; padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <div id="status" class="panel">初期化中…</div>
+
+  <div id="webcam-container">
+    <video id="webcam" autoplay muted playsinline></video>
+  </div>
+
+  <label id="drop-zone" class="panel">
+    ここに <b>.vrm</b> をドラッグ&ドロップ<br />
+    <small>または <u>クリックしてファイル選択</u></small>
+    <input id="vrm-input" type="file" accept=".vrm" style="display:none" />
+  </label>
+
+  <div id="controls" class="panel">
+    <button id="mic-btn" type="button" title="マイクベースのリップシンクを有効化">🎙 マイク OFF</button>
+    <div class="meter" title="マイク音量"><div id="mic-meter"></div></div>
+    <button id="gaze-btn" type="button" class="active" title="目線追従">👀 目線 ON</button>
+    <button id="smooth-btn" type="button" class="active" title="One Euro Filter スムージング">〰 スムージング ON</button>
+  </div>
+
+  <div id="help" class="panel">
+    マウス: <kbd>ドラッグ</kbd> 回転 / <kbd>ホイール</kbd> ズーム
+  </div>
+
+  <!-- Kalidokit (UMD → window.Kalidokit) -->
+  <script src="https://cdn.jsdelivr.net/npm/kalidokit@1.1.5/dist/kalidokit.umd.js"></script>
+  <!-- MediaPipe FaceMesh (UMD → window.FaceMesh) -->
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js"></script>
+  <!-- MediaPipe camera_utils (UMD → window.Camera) -->
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"></script>
+
+  <!-- three.js & three-vrm via importmap -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "@pixiv/three-vrm": "https://unpkg.com/@pixiv/three-vrm@3.1.5/lib/three-vrm.module.js"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
+    import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
+    // -------- One Euro Filter (https://gery.casiez.net/1euro/) --------
+    // 低カットオフで停止時のジッタ除去、高速移動時は beta でカットオフを上げて追従
+    class OneEuroFilter {
+      constructor(minCutoff = 1.0, beta = 0.007, dCutoff = 1.0) {
+        this.minCutoff = minCutoff;
+        this.beta = beta;
+        this.dCutoff = dCutoff;
+        this.xPrev = null;
+        this.dxPrev = 0;
+        this.tPrev = null;
+      }
+      static alpha(cutoff, dt) {
+        const tau = 1 / (2 * Math.PI * cutoff);
+        return 1 / (1 + tau / dt);
+      }
+      reset() { this.xPrev = null; this.dxPrev = 0; this.tPrev = null; }
+      filter(x, tSec) {
+        if (this.tPrev == null) { this.tPrev = tSec; this.xPrev = x; return x; }
+        const dt = Math.max(1e-6, tSec - this.tPrev);
+        const dx = (x - this.xPrev) / dt;
+        const aD = OneEuroFilter.alpha(this.dCutoff, dt);
+        const dxHat = aD * dx + (1 - aD) * this.dxPrev;
+        const cutoff = this.minCutoff + this.beta * Math.abs(dxHat);
+        const a = OneEuroFilter.alpha(cutoff, dt);
+        const xHat = a * x + (1 - a) * this.xPrev;
+        this.xPrev = xHat;
+        this.dxPrev = dxHat;
+        this.tPrev = tSec;
+        return xHat;
+      }
+    }
+
+    // -------- UI helpers --------
+    const statusEl = document.getElementById('status');
+    const setStatus = (msg) => { statusEl.innerHTML = msg; };
+    const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
+    // -------- three.js scene --------
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x1a1a1a);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    document.body.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 30);
+    camera.position.set(0, 1.4, 1.8);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    dirLight.position.set(1, 2, 1.5);
+    scene.add(dirLight);
+
+    const grid = new THREE.GridHelper(4, 10, 0x444444, 0x333333);
+    scene.add(grid);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1.3, 0);
+    controls.update();
+
+    window.addEventListener('resize', () => {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+    });
+
+    // -------- VRM loading --------
+    let currentVRM = null;
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.register((parser) => new VRMLoaderPlugin(parser));
+
+    async function loadVRM(url, label) {
+      setStatus(`VRM 読込中: ${label ?? url}`);
+      const gltf = await gltfLoader.loadAsync(url);
+      const vrm = gltf.userData.vrm;
+      if (!vrm) throw new Error('VRM データが見つかりません');
+
+      if (currentVRM) {
+        scene.remove(currentVRM.scene);
+        VRMUtils.deepDispose(currentVRM.scene);
+      }
+
+      VRMUtils.removeUnnecessaryVertices(gltf.scene);
+      VRMUtils.combineSkeletons(gltf.scene);
+      vrm.scene.traverse((obj) => { obj.frustumCulled = false; });
+      VRMUtils.rotateVRM0(vrm); // VRM 0.x を前向きに補正 (VRM 1.0 は no-op)
+
+      scene.add(vrm.scene);
+      currentVRM = vrm;
+
+      const meta = vrm.meta ?? {};
+      const name = meta.name ?? meta.title ?? '(無題)';
+      const version = vrm.meta?.metaVersion ?? (vrm.meta ? '0.x' : '?');
+      setStatus(`VRM 読込完了: <b>${name}</b> (VRM ${version})`);
+      return vrm;
+    }
+
+    // -------- Drag & drop / file input --------
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('vrm-input');
+
+    async function handleFile(file) {
+      if (!file) return;
+      if (!/\.vrm$/i.test(file.name)) {
+        setStatus(`これは VRM ファイルではありません: ${file.name}`);
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      try { await loadVRM(url, file.name); }
+      catch (e) { setStatus(`VRM 読込失敗: ${e.message}`); }
+    }
+
+    ['dragenter', 'dragover'].forEach((ev) =>
+      window.addEventListener(ev, (e) => { e.preventDefault(); dropZone.classList.add('dragging'); })
+    );
+    ['dragleave', 'drop'].forEach((ev) =>
+      window.addEventListener(ev, () => dropZone.classList.remove('dragging'))
+    );
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const f = e.dataTransfer?.files?.[0];
+      if (f) handleFile(f);
+    });
+    fileInput.addEventListener('change', (e) => handleFile(e.target.files?.[0]));
+
+    // -------- MediaPipe FaceMesh --------
+    const video = document.getElementById('webcam');
+    const faceMesh = new FaceMesh({
+      locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${f}`,
+    });
+    faceMesh.setOptions({
+      maxNumFaces: 1,
+      refineLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    });
+
+    let latestRig = null;
+    faceMesh.onResults((results) => {
+      const lm = results.multiFaceLandmarks?.[0];
+      if (!lm) return;
+      latestRig = Kalidokit.Face.solve(lm, { runtime: 'mediapipe', video });
+    });
+
+    const cam = new Camera(video, {
+      onFrame: async () => { await faceMesh.send({ image: video }); },
+      width: 640,
+      height: 480,
+    });
+
+    // -------- Apply rig to VRM --------
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const FALLBACK_EASE = 0.4;
+
+    // スムージング ON 時に使う One Euro Filter 群
+    // 頭姿勢は比較的速い動きもあり得るので minCutoff 低め + beta 高め
+    const f = {
+      headX:   new OneEuroFilter(1.2, 0.01),
+      headY:   new OneEuroFilter(1.2, 0.01),
+      headZ:   new OneEuroFilter(1.2, 0.01),
+      pupilX:  new OneEuroFilter(2.0, 0.02),
+      pupilY:  new OneEuroFilter(2.0, 0.02),
+      brow:    new OneEuroFilter(1.5, 0.01),
+      eyeL:    new OneEuroFilter(3.0, 0.04),
+      eyeR:    new OneEuroFilter(3.0, 0.04),
+    };
+
+    // ユーザ切替可能なフラグ (boot() で wire up)
+    const options = {
+      mic: false,
+      gaze: true,
+      smooth: true,
+    };
+
+    // マイク音量 (updateMicLevel() で更新)
+    let micLevel = 0;
+
+    function applyRig(vrm, rig) {
+      const hum = vrm.humanoid;
+      if (!hum) return;
+
+      const now = performance.now() / 1000;
+
+      // --- 頭の回転 ---
+      // webcam が scaleX(-1) で鏡像表示される前提のため、y/z を反転して自然な動きに
+      let hx = 0, hy = 0, hz = 0;
+      if (rig) {
+        hx = rig.head.x;
+        hy = -rig.head.y;
+        hz = -rig.head.z;
+        if (options.smooth) {
+          hx = f.headX.filter(hx, now);
+          hy = f.headY.filter(hy, now);
+          hz = f.headZ.filter(hz, now);
+        }
+      }
+
+      const head = hum.getNormalizedBoneNode('head');
+      if (head) {
+        if (options.smooth) {
+          head.rotation.set(hx, hy, hz);
+        } else {
+          head.rotation.x = lerp(head.rotation.x, hx, FALLBACK_EASE);
+          head.rotation.y = lerp(head.rotation.y, hy, FALLBACK_EASE);
+          head.rotation.z = lerp(head.rotation.z, hz, FALLBACK_EASE);
+        }
+      }
+      // --- 首にも 30% 分配 ---
+      const neck = hum.getNormalizedBoneNode('neck');
+      if (neck) {
+        const nx = hx * 0.3, ny = hy * 0.3, nz = hz * 0.3;
+        if (options.smooth) {
+          neck.rotation.set(nx, ny, nz);
+        } else {
+          neck.rotation.x = lerp(neck.rotation.x, nx, FALLBACK_EASE);
+          neck.rotation.y = lerp(neck.rotation.y, ny, FALLBACK_EASE);
+          neck.rotation.z = lerp(neck.rotation.z, nz, FALLBACK_EASE);
+        }
+      }
+
+      // --- 表情 (three-vrm v3: ExpressionManager) ---
+      const em = vrm.expressionManager;
+      if (em) {
+        // 瞬き (Kalidokit: 1=開, 0=閉 → blink は 1-x)
+        let eL = rig ? clamp01(rig.eye?.l ?? 1) : 1;
+        let eR = rig ? clamp01(rig.eye?.r ?? 1) : 1;
+        if (rig && options.smooth) {
+          eL = clamp01(f.eyeL.filter(eL, now));
+          eR = clamp01(f.eyeR.filter(eR, now));
+        }
+        em.setValue('blinkLeft',  1 - eL);
+        em.setValue('blinkRight', 1 - eR);
+
+        // 口 (A/I/U/E/O) — Kalidokit の口形
+        let aaFace = rig ? clamp01(rig.mouth?.shape?.A ?? 0) : 0;
+        const ih = rig ? clamp01(rig.mouth?.shape?.I ?? 0) : 0;
+        const ou = rig ? clamp01(rig.mouth?.shape?.U ?? 0) : 0;
+        const ee = rig ? clamp01(rig.mouth?.shape?.E ?? 0) : 0;
+        const oh = rig ? clamp01(rig.mouth?.shape?.O ?? 0) : 0;
+
+        // マイク ON の時は顔の A とマイク音量の大きい方を採用 (ブレンド)
+        const aa = options.mic ? Math.max(aaFace, micLevel) : aaFace;
+        em.setValue('aa', aa);
+        em.setValue('ih', ih);
+        em.setValue('ou', ou);
+        em.setValue('ee', ee);
+        em.setValue('oh', oh);
+
+        // --- 眉 (brow) → surprised / sad ---
+        // Kalidokit.brow は概ね 0..1 で 0.5 がニュートラル
+        let brow = rig ? (rig.brow ?? 0.5) : 0.5;
+        if (rig && options.smooth) brow = f.brow.filter(brow, now);
+        em.setValue('surprised', clamp01((brow - 0.5) * 2));
+        em.setValue('sad',       clamp01((0.5 - brow) * 2));
+
+        // --- 目線追従 (lookLeft/Right/Up/Down) ---
+        if (options.gaze && rig?.pupil) {
+          let px = rig.pupil.x ?? 0;
+          let py = rig.pupil.y ?? 0;
+          if (options.smooth) {
+            px = f.pupilX.filter(px, now);
+            py = f.pupilY.filter(py, now);
+          }
+          // webcam 鏡像 → x 反転
+          px = -px;
+          em.setValue('lookLeft',  clamp01(-px));
+          em.setValue('lookRight', clamp01(px));
+          em.setValue('lookUp',    clamp01(py));
+          em.setValue('lookDown',  clamp01(-py));
+        } else {
+          em.setValue('lookLeft', 0);
+          em.setValue('lookRight', 0);
+          em.setValue('lookUp', 0);
+          em.setValue('lookDown', 0);
+        }
+      }
+    }
+
+    // -------- Mic (Web Audio) --------
+    let audioCtx = null;
+    let audioAnalyser = null;
+    let audioBuffer = null;
+    let audioStream = null;
+    const micMeterEl = document.getElementById('mic-meter');
+
+    async function enableMic() {
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false },
+        });
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtx.createMediaStreamSource(audioStream);
+        audioAnalyser = audioCtx.createAnalyser();
+        audioAnalyser.fftSize = 1024;
+        audioAnalyser.smoothingTimeConstant = 0.35;
+        source.connect(audioAnalyser);
+        audioBuffer = new Uint8Array(audioAnalyser.fftSize);
+        options.mic = true;
+        return true;
+      } catch (e) {
+        setStatus(`マイク起動失敗: ${e.message}`);
+        return false;
+      }
+    }
+
+    function disableMic() {
+      options.mic = false;
+      if (audioStream) {
+        audioStream.getTracks().forEach((t) => t.stop());
+        audioStream = null;
+      }
+      if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; }
+      audioAnalyser = null;
+      audioBuffer = null;
+      micLevel = 0;
+    }
+
+    function updateMicLevel() {
+      if (!audioAnalyser || !audioBuffer) { micLevel = 0; return; }
+      audioAnalyser.getByteTimeDomainData(audioBuffer);
+      let sum = 0;
+      for (let i = 0; i < audioBuffer.length; i++) {
+        const v = (audioBuffer[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / audioBuffer.length);
+      // RMS 0..0.3 を 0..1 にマップ (感度調整)
+      micLevel = clamp01(rms * 5);
+      if (micMeterEl) micMeterEl.style.width = `${Math.round(micLevel * 100)}%`;
+    }
+
+    // -------- Animation loop --------
+    const clock = new THREE.Clock();
+    function animate() {
+      const dt = clock.getDelta();
+      if (options.mic) updateMicLevel();
+      if (currentVRM) {
+        applyRig(currentVRM, latestRig);
+        currentVRM.update(dt);
+      }
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    // -------- Toggle button wiring --------
+    const micBtn    = document.getElementById('mic-btn');
+    const gazeBtn   = document.getElementById('gaze-btn');
+    const smoothBtn = document.getElementById('smooth-btn');
+
+    micBtn.addEventListener('click', async () => {
+      if (!options.mic) {
+        const ok = await enableMic();
+        if (!ok) return;
+        micBtn.textContent = '🎙 マイク ON';
+        micBtn.classList.add('active');
+      } else {
+        disableMic();
+        micBtn.textContent = '🎙 マイク OFF';
+        micBtn.classList.remove('active');
+        if (micMeterEl) micMeterEl.style.width = '0%';
+      }
+    });
+
+    gazeBtn.addEventListener('click', () => {
+      options.gaze = !options.gaze;
+      gazeBtn.textContent = options.gaze ? '👀 目線 ON' : '👀 目線 OFF';
+      gazeBtn.classList.toggle('active', options.gaze);
+    });
+
+    smoothBtn.addEventListener('click', () => {
+      options.smooth = !options.smooth;
+      smoothBtn.textContent = options.smooth ? '〰 スムージング ON' : '〰 スムージング OFF';
+      smoothBtn.classList.toggle('active', options.smooth);
+      // スムージング切替時はフィルタをリセット (ジャンプ防止)
+      Object.values(f).forEach((flt) => flt.reset());
+    });
+
+    // -------- Boot --------
+    async function boot() {
+      // 1. 既定 VRM があれば自動読込
+      try {
+        const resp = await fetch('./sample.vrm', { method: 'HEAD' });
+        if (resp.ok) await loadVRM('./sample.vrm', 'sample.vrm');
+        else setStatus('VRM ファイルを画面左下の領域にドラッグ&ドロップしてください。');
+      } catch {
+        setStatus('VRM ファイルを画面左下の領域にドラッグ&ドロップしてください。');
+      }
+
+      // 2. カメラ起動
+      try {
+        await cam.start();
+      } catch (e) {
+        setStatus(`カメラ起動失敗: ${e.message}<br />ブラウザのカメラ許可を確認してください。`);
+        return;
+      }
+
+      animate();
+    }
+
+    boot();
+  </script>
+</body>
+</html>
