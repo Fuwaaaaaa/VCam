@@ -97,30 +97,37 @@ VCam/
     │  - requestAnimationFrame loop      │
     └────────────┬───────────────────────┘
                  │
-    ┌────────────┴─────────────┐
-    │                          │
-    ▼                          ▼
-[FaceMesh ─▶ Kalidokit]   [MicTracker]
-    │                          │
-    ▼                          ▼
- FaceRig                   micLevel (0..1)
-    │                          │
-    └──────────┬───────────────┘
-               ▼
-    applyRig(vrm, rig, opts, filters, now)
-               │
-  ┌────────────┼──────────────┐
-  ▼            ▼              ▼
- head+neck   expressions    (lookAt via expressions)
-  ▼            ▼              ▼
-     vrm.humanoid + vrm.expressionManager
-               │
-               ▼
-         renderer.render()
+    ┌──────────────────────────────┐
+    │   createTracker (shared Cam) │
+    └────────────┬─────────────────┘
+                 │ sequential send per frame
+    ┌────────────┼──────────────┬──────────────┐
+    │            │              │              │
+    ▼            ▼              ▼              ▼
+[FaceMesh] [Pose Landmarker] [MicTracker]  (idle)
+    │            │              │
+    ▼            ▼              ▼
+ FaceRig      PoseRig       micLevel (0..1)
+    │            │              │
+    │            │   ┌──────────┘
+    │            │   │
+    ▼            ▼   ▼
+ applyRig(face) computePoseBoneRotations ─▶ applyBoneRotations
+    │                                        │
+    ▼                                        ▼
+ head+neck + expressions            spine, hips, L/R arms, L/R hands
+    │                                        │
+    └────────────┬───────────────────────────┘
+                 ▼
+       vrm.humanoid + vrm.expressionManager
+                 │
+                 ▼
+           renderer.render()
 ```
 
 ## 反映されている要素
 
+### Face (Phase 2-A/B)
 - ✅ 頭の向き (yaw / pitch / roll)
 - ✅ 首の向き (頭の 30% 分配)
 - ✅ 瞬き (左右独立)
@@ -130,10 +137,18 @@ VCam/
 - ✅ マイクベースのリップシンク (音量と口形の大きい方)
 - ✅ One Euro Filter スムージング
 
+### Pose (Phase 3-a, NEW)
+- ✅ 背骨 (spine) の傾き
+- ✅ ヒップ (hips) の回転
+- ✅ 左右の上腕 (leftUpperArm / rightUpperArm)
+- ✅ 左右の前腕 (leftLowerArm / rightLowerArm)
+- ✅ 左右の手首 (leftHand / rightHand)
+- ✅ 上半身専用のフィルタ束で個別スムージング
+- 👤 ポーズ ON/OFF トグル (UI)
+
 ## 未実装 (TODOS.md 参照)
 
-- ⬜ 上半身・腕のトラッキング (Phase 3-a) ← 次フェーズ
-- ⬜ 全身 + IK (Phase 3-b)
+- ⬜ 全身 + IK (下半身トラッキング + 足接地補間、Phase 3-b)
 - ⬜ localStorage 設定永続化 (T-002, Phase 4)
 - ⬜ サンプル VRM 同梱 (T-001)
 - ⬜ Tauri パッケージング (Phase 5)
@@ -165,8 +180,8 @@ VCam/
 
 - Phase 2-A: 顔追従 + 基本表情 ✅
 - Phase 2-B: リップシンク + 目線 + スムージング ✅
-- **Vite + TS + Vitest + Playwright migration ✅ ← いまここ**
-- Phase 3-a: 上半身トラッキング (MediaPipe Pose + Kalidokit.Pose)
+- Vite + TS + Vitest + Playwright migration ✅
+- **Phase 3-a: 上半身トラッキング ✅ ← いまここ**
 - Phase 3-b: 全身 + IK
 - Phase 4: UI / 設定永続化
 - Phase 5: Tauri パッケージング

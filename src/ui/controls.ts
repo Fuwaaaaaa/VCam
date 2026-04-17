@@ -4,6 +4,7 @@ export type ControlsHandlers = {
   onMicToggle: (next: boolean) => Promise<boolean>;   // return: 成功したら true
   onGazeToggle: (next: boolean) => void;
   onSmoothToggle: (next: boolean) => void;
+  onPoseToggle: (next: boolean) => void;
 };
 
 export type ControlsElements = {
@@ -11,6 +12,7 @@ export type ControlsElements = {
   micMeter: HTMLElement;
   gazeBtn: HTMLButtonElement;
   smoothBtn: HTMLButtonElement;
+  poseBtn: HTMLButtonElement;
 };
 
 export function wireControls(els: ControlsElements, opts: AppOptions, handlers: ControlsHandlers): {
@@ -28,8 +30,12 @@ export function wireControls(els: ControlsElements, opts: AppOptions, handlers: 
     els.smoothBtn.textContent = opts.smooth ? '〰 スムージング ON' : '〰 スムージング OFF';
     els.smoothBtn.classList.toggle('active', opts.smooth);
   };
+  const syncPose = () => {
+    els.poseBtn.textContent = opts.pose ? '👤 ポーズ ON' : '👤 ポーズ OFF';
+    els.poseBtn.classList.toggle('active', opts.pose);
+  };
 
-  syncMic(); syncGaze(); syncSmooth();
+  syncMic(); syncGaze(); syncSmooth(); syncPose();
 
   els.micBtn.addEventListener('click', async () => {
     const ok = await handlers.onMicToggle(!opts.mic);
@@ -45,6 +51,11 @@ export function wireControls(els: ControlsElements, opts: AppOptions, handlers: 
     opts.smooth = !opts.smooth;
     handlers.onSmoothToggle(opts.smooth);
     syncSmooth();
+  });
+  els.poseBtn.addEventListener('click', () => {
+    opts.pose = !opts.pose;
+    handlers.onPoseToggle(opts.pose);
+    syncPose();
   });
 
   return {

@@ -7,12 +7,23 @@ test.describe('VCam smoke', () => {
     await expect(page.locator('canvas')).toBeVisible({ timeout: 10_000 });
     // Status panel shows initial message
     await expect(page.locator('#status')).toBeVisible();
-    // Controls panel with 3 buttons
+    // Controls panel with all 4 toggle buttons
     await expect(page.locator('#mic-btn')).toBeVisible();
     await expect(page.locator('#gaze-btn')).toBeVisible();
     await expect(page.locator('#smooth-btn')).toBeVisible();
+    await expect(page.locator('#pose-btn')).toBeVisible();
     // Drop zone for VRM
     await expect(page.locator('#drop-zone')).toBeVisible();
+  });
+
+  test('pose toggle flips label and active class', async ({ page }) => {
+    await page.goto('/');
+    const btn = page.locator('#pose-btn');
+    await expect(btn).toHaveClass(/active/);
+    await expect(btn).toContainText('ポーズ ON');
+    await btn.click();
+    await expect(btn).not.toHaveClass(/active/);
+    await expect(btn).toContainText('ポーズ OFF');
   });
 
   test('gaze toggle flips label and active class', async ({ page }) => {

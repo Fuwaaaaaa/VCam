@@ -2,12 +2,14 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { VRM } from '@pixiv/three-vrm';
 
-import type { FaceRig, AppOptions } from './types';
+import type { FaceRig, PoseRig, AppOptions } from './types';
 import { loadVRMFromUrl, disposeVRM } from './core/avatar/loadVRM';
 import { applyRig } from './core/avatar/applyRig';
+import { computePoseBoneRotations, applyBoneRotations } from './core/avatar/applyPose';
 import { createRigFilterSet, resetRigFilterSet } from './core/filters/rigFilterSet';
+import { createPoseFilterSet, resetPoseFilterSet } from './core/filters/poseFilterSet';
 import { MicTracker } from './core/audio/micLevel';
-import { createFaceTracker } from './core/tracking/faceMesh';
+import { createTracker } from './core/tracking/tracker';
 import { createStatus } from './ui/status';
 import { wireDropZone } from './ui/dropZone';
 import { wireControls } from './ui/controls';
@@ -21,6 +23,7 @@ const micBtn     = document.getElementById('mic-btn')    as HTMLButtonElement;
 const micMeterEl = document.getElementById('mic-meter')  as HTMLElement;
 const gazeBtn    = document.getElementById('gaze-btn')   as HTMLButtonElement;
 const smoothBtn  = document.getElementById('smooth-btn') as HTMLButtonElement;
+const poseBtn    = document.getElementById('pose-btn')   as HTMLButtonElement;
 
 const status = createStatus(statusEl);
 status.set('初期化中…');
@@ -55,11 +58,16 @@ window.addEventListener('resize', () => {
 
 // ==================== state ====================
 let currentVRM: VRM | null = null;
-let latestRig: FaceRig | null = null;
+let latestFaceRig: FaceRig | null = null;
+let latestPoseRig: PoseRig | null = null;
 
-const opts: AppOptions = { mic: false, gaze: true, smooth: true };
-const filters = createRigFilterSet();
+const opts: AppOptions = { mic: false, gaze: true, smooth: true, pose: true };
+const faceFilters = createRigFilterSet();
+const poseFilters = createPoseFilterSet();
 const mic = new MicTracker();
+
+// Webcam は CSS で scaleX(-1) しているため mirror=true
+const MIRROR_WEBCAM = true;
 
 // ==================== VRM loading ====================
 async function loadVRM(url: string, label?: string): Promise<void> {
@@ -83,8 +91,9 @@ wireDropZone({
 });
 
 // ==================== Controls ====================
+let trackerRef: Awaited<ReturnType<typeof createTracker>> | null = null;
 const ctrl = wireControls(
-  { micBtn, micMeter: micMeterEl, gazeBtn, smoothBtn },
+  { micBtn, micMeter: micMeterEl, gazeBtn, smoothBtn, poseBtn },
   opts,
   {
     onMicToggle: async (next) => {
@@ -95,8 +104,16 @@ const ctrl = wireControls(
       mic.disable();
       return true;
     },
-    onGazeToggle: () => { /* no-op: applyRig reads opts.gaze live */ },
-    onSmoothToggle: () => { resetRigFilterSet(filters); },
+    onGazeToggle: () => { /* applyRig reads opts.gaze live */ },
+    onSmoothToggle: () => {
+      resetRigFilterSet(faceFilters);
+      resetPoseFilterSet(poseFilters);
+    },
+    onPoseToggle: (next) => {
+      trackerRef?.enablePose(next);
+      if (!next) latestPoseRig = null;
+      resetPoseFilterSet(poseFilters);
+    },
   },
 );
 
@@ -110,7 +127,16 @@ function animate(): void {
   }
   if (currentVRM) {
     const now = performance.now() / 1000;
-    applyRig(currentVRM, latestRig, { ...opts, micLevel: mic.level }, filters, now);
+    applyRig(currentVRM, latestFaceRig, { ...opts, micLevel: mic.level }, faceFilters, now);
+    if (opts.pose && latestPoseRig) {
+      const rotations = computePoseBoneRotations(
+        latestPoseRig,
+        { smooth: opts.smooth, mirror: MIRROR_WEBCAM },
+        poseFilters,
+        now,
+      );
+      applyBoneRotations(currentVRM, rotations, opts.smooth);
+    }
     currentVRM.update(dt);
   }
   renderer.render(scene, camera);
@@ -128,19 +154,18 @@ async function boot(): Promise<void> {
     status.set('VRM ファイルを画面左下にドラッグ&ドロップしてください。');
   }
 
-  // 2. FaceMesh + Camera 起動
+  // 2. Face + Pose tracker 起動
   try {
-    const tracker = await createFaceTracker(
-      videoEl,
-      {
-        onRig: (rig) => { latestRig = rig; },
-        onError: (err, phase) => {
-          console.error(`[faceMesh:${phase}]`, err);
-          status.set(`トラッキングエラー (${phase}): ${(err as Error).message ?? err}`);
-        },
+    trackerRef = await createTracker(videoEl, {
+      onFaceRig: (rig) => { latestFaceRig = rig; },
+      onPoseRig: (rig) => { latestPoseRig = rig; },
+      onError: (err, phase) => {
+        console.error(`[tracker:${phase}]`, err);
+        status.set(`トラッキングエラー (${phase}): ${(err as Error).message ?? err}`);
       },
-    );
-    await tracker.start();
+    });
+    trackerRef.enablePose(opts.pose);
+    await trackerRef.start();
   } catch (e) {
     status.set(`カメラ起動失敗: ${(e as Error).message}<br />ブラウザのカメラ許可を確認してください。`);
     return;

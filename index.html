@@ -41,6 +41,7 @@
     <div class="meter" title="マイク音量"><div id="mic-meter"></div></div>
     <button id="gaze-btn" type="button" class="active" title="目線追従">👀 目線 ON</button>
     <button id="smooth-btn" type="button" class="active" title="One Euro Filter スムージング">〰 スムージング ON</button>
+    <button id="pose-btn" type="button" class="active" title="上半身ポーズ追従 (Phase 3-a)">👤 ポーズ ON</button>
   </div>
 
   <div id="help" class="panel">
@@ -52,6 +53,7 @@
     window.FaceMesh / window.Camera をロードする。型定義は node_modules 経由で参照。
   -->
   <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js"></script>
   <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"></script>
 
   <script type="module" src="/src/main.ts"></script>
