@@ -5,7 +5,7 @@ import type { VRM } from '@pixiv/three-vrm';
 import type { FaceRig, PoseRig, AppOptions } from './types';
 import { loadVRMFromUrl, disposeVRM } from './core/avatar/loadVRM';
 import { applyRig } from './core/avatar/applyRig';
-import { computePoseBoneRotations, applyBoneRotations } from './core/avatar/applyPose';
+import { computePoseBoneRotations, applyBoneRotations, computeHipPosition, applyHipPosition } from './core/avatar/applyPose';
 import { createRigFilterSet, resetRigFilterSet } from './core/filters/rigFilterSet';
 import { createPoseFilterSet, resetPoseFilterSet } from './core/filters/poseFilterSet';
 import { MicTracker } from './core/audio/micLevel';
@@ -69,6 +69,12 @@ const mic = new MicTracker();
 // Webcam は CSS で scaleX(-1) しているため mirror=true
 const MIRROR_WEBCAM = true;
 
+// Phase 3-b: 脚とヒップ位置の追従強度。
+//  - legStrength: webcam が膝以下を映さないセットアップなら低めに (0.2 程度)
+//  - hipPosStrength: Kalidokit の hip 位置は大きく振れやすいので 0.3 程度
+const LEG_STRENGTH = 1.0;
+const HIP_POS_STRENGTH = 0.3;
+
 // ==================== VRM loading ====================
 async function loadVRM(url: string, label?: string): Promise<void> {
   status.set(`VRM 読込中: ${label ?? url}`);
@@ -131,11 +137,22 @@ function animate(): void {
     if (opts.pose && latestPoseRig) {
       const rotations = computePoseBoneRotations(
         latestPoseRig,
-        { smooth: opts.smooth, mirror: MIRROR_WEBCAM },
+        { smooth: opts.smooth, mirror: MIRROR_WEBCAM, legStrength: LEG_STRENGTH },
         poseFilters,
         now,
       );
       applyBoneRotations(currentVRM, rotations, opts.smooth);
+
+      const hipPos = computeHipPosition(
+        latestPoseRig,
+        { smooth: opts.smooth, mirror: MIRROR_WEBCAM, hipPosStrength: HIP_POS_STRENGTH },
+        poseFilters,
+        now,
+      );
+      applyHipPosition(currentVRM, hipPos, opts.smooth);
+    } else if (currentVRM) {
+      // pose OFF の時は hip 位置を 0 にゆっくり戻す
+      applyHipPosition(currentVRM, null, opts.smooth);
     }
     currentVRM.update(dt);
   }

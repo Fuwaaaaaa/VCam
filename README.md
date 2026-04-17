@@ -137,18 +137,32 @@ VCam/
 - ✅ マイクベースのリップシンク (音量と口形の大きい方)
 - ✅ One Euro Filter スムージング
 
-### Pose (Phase 3-a, NEW)
+### Pose (Phase 3-a / 3-b)
 - ✅ 背骨 (spine) の傾き
 - ✅ ヒップ (hips) の回転
-- ✅ 左右の上腕 (leftUpperArm / rightUpperArm)
-- ✅ 左右の前腕 (leftLowerArm / rightLowerArm)
-- ✅ 左右の手首 (leftHand / rightHand)
-- ✅ 上半身専用のフィルタ束で個別スムージング
+- ✅ 左右の上腕 / 前腕 / 手首
+- ✅ 左右の太もも (leftUpperLeg / rightUpperLeg) — Phase 3-b
+- ✅ 左右の膝 (leftLowerLeg / rightLowerLeg) — Phase 3-b
+- ✅ Hips 位置オフセット (X/Y、Z は webcam 深度不安定のため除外) — Phase 3-b
+- ✅ 床突き抜け防止 clamp (Y: -0.2m 〜 +0.5m) — Phase 3-b
+- ✅ 脚用フィルタは minCutoff=0.5 で安定重視
+- ✅ `legStrength` / `hipPosStrength` 係数で追従量を調整可能
 - 👤 ポーズ ON/OFF トグル (UI)
 
-## 未実装 (TODOS.md 参照)
+## Pose のチューニング
 
-- ⬜ 全身 + IK (下半身トラッキング + 足接地補間、Phase 3-b)
+`src/main.ts` 冒頭の定数で挙動を調整:
+
+| 定数 | 既定 | 用途 |
+|---|---|---|
+| `LEG_STRENGTH` | `1.0` | 脚の追従強度 (0..1)。膝より下がカメラに映らないセットアップでは `0.2〜0.3` 推奨 |
+| `HIP_POS_STRENGTH` | `0.3` | Hips 位置オフセット強度。`1.0` でアバターが跳ね回るので基本は低め |
+| `MIRROR_WEBCAM` | `true` | webcam が CSS で鏡像表示されている前提 (y/z 軸反転) |
+
+Pose モデル複雑度は `src/core/tracking/poseProcessor.ts` の `modelComplexity: 1` で
+0 (Lite) / 1 (Full) / 2 (Heavy) を選択可能。低スペック PC は 0 に。
+
+## 未実装 (TODOS.md 参照)
 - ⬜ localStorage 設定永続化 (T-002, Phase 4)
 - ⬜ サンプル VRM 同梱 (T-001)
 - ⬜ Tauri パッケージング (Phase 5)
@@ -181,8 +195,8 @@ VCam/
 - Phase 2-A: 顔追従 + 基本表情 ✅
 - Phase 2-B: リップシンク + 目線 + スムージング ✅
 - Vite + TS + Vitest + Playwright migration ✅
-- **Phase 3-a: 上半身トラッキング ✅ ← いまここ**
-- Phase 3-b: 全身 + IK
+- Phase 3-a: 上半身トラッキング ✅
+- **Phase 3-b: 全身トラッキング + hip 位置オフセット + 床 clamp ✅ ← いまここ**
 - Phase 4: UI / 設定永続化
 - Phase 5: Tauri パッケージング
 - Phase E: マルチバース

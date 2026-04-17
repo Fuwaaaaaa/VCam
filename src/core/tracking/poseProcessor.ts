@@ -28,6 +28,13 @@ export type PoseCallbacks = {
   onError?: (err: unknown, phase: PoseErrorPhase) => void;
 };
 
+export type PoseProcessorOptions = {
+  /** Kalidokit に脚も解かせるか。Phase 3-b 以降は true 既定 */
+  enableLegs?: boolean;
+  /** MediaPipe Pose モデル複雑度: 0=Lite (速/粗), 1=Full (標準), 2=Heavy (遅/精) */
+  modelComplexity?: 0 | 1 | 2;
+};
+
 export type PoseProcessor = {
   send: (video: HTMLVideoElement) => Promise<void>;
   close: () => void;
@@ -35,9 +42,14 @@ export type PoseProcessor = {
 
 /**
  * MediaPipe Pose + Kalidokit.Pose.solve を組み立てた単一フレーム処理器。
- * 上半身のみ追従 (enableLegs: false) — Phase 3-b で下半身+IK を追加する。
+ * Phase 3-b 時点で enableLegs=true が既定 (下半身含む全身トラッキング)。
  */
-export function createPoseProcessor(callbacks: PoseCallbacks): PoseProcessor {
+export function createPoseProcessor(
+  callbacks: PoseCallbacks,
+  options: PoseProcessorOptions = {},
+): PoseProcessor {
+  const enableLegs = options.enableLegs ?? true;
+  const modelComplexity = options.modelComplexity ?? 1;
   if (typeof window.Pose !== 'function') {
     const err = new Error('window.Pose が未定義 (@mediapipe/pose CDN 未読込)');
     callbacks.onError?.(err, 'setup');
@@ -48,7 +60,7 @@ export function createPoseProcessor(callbacks: PoseCallbacks): PoseProcessor {
   try {
     pose = new window.Pose({ locateFile: (f: string) => `${POSE_CDN}/${f}` });
     pose.setOptions({
-      modelComplexity: 1,          // 0=Lite, 1=Full, 2=Heavy
+      modelComplexity,
       smoothLandmarks: true,
       enableSegmentation: false,
       smoothSegmentation: false,
@@ -69,7 +81,7 @@ export function createPoseProcessor(callbacks: PoseCallbacks): PoseProcessor {
       const rig = Kalidokit.Pose.solve(lm3d, lm2d, {
         runtime: 'mediapipe',
         video: latestVideo ?? undefined,
-        enableLegs: false,
+        enableLegs,
       }) as PoseRig | undefined;
       if (rig) callbacks.onRig(rig);
     } catch (e) {
