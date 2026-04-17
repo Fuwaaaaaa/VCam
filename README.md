@@ -196,7 +196,11 @@ Pose モデル複雑度は `src/core/tracking/poseProcessor.ts` の `modelComple
 - Phase 2-B: リップシンク + 目線 + スムージング ✅
 - Vite + TS + Vitest + Playwright migration ✅
 - Phase 3-a: 上半身トラッキング ✅
-- **Phase 3-b: 全身トラッキング + hip 位置オフセット + 床 clamp ✅ ← いまここ**
+- Phase 3-b: 全身トラッキング + hip 位置オフセット + 床 clamp ✅
+- Phase 4: 設定パネル + localStorage 永続化 + スライダ調整 ✅
+- Phase 5: Tauri デスクトップパッケージング + CI/CD ✅
+- Phase E: マルチバース (WebRTC / PeerJS) ✅
+- **Phase F: AR 演出 (透過背景 / Bloom ポストエフェクト) ✅ ← いまここ**
 - Phase 4: UI / 設定永続化
 - Phase 5: Tauri パッケージング
 - Phase E: マルチバース

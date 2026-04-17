@@ -29,6 +29,9 @@ export type Settings = {
   micSensitivity: number;   // 1..15
   /** 透過背景 (Phase F) */
   transparentBg?: boolean;
+  /** ポストエフェクト Bloom (Phase F) */
+  bloom?: boolean;
+  bloomStrength?: number;   // 0..3
 };
 
 /** Kalidokit.Pose.solve の返り値のサブセット (上半身のみ使用) */

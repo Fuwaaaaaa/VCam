@@ -29,6 +29,8 @@ describe('loadSettings', () => {
       hipPosStrength: 0.1,
       micSensitivity: 8,
       transparentBg: true,
+      bloom: true,
+      bloomStrength: 1.5,
     };
     saveSettings(custom);
     expect(loadSettings()).toEqual(custom);

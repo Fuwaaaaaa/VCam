@@ -19,6 +19,7 @@ import { loadSettings, saveSettings, clearSettings, DEFAULT_SETTINGS } from './c
 import { createPeerSession } from './core/net/peerSession';
 import { encodeMessage } from './core/net/rigSerialize';
 import { RemoteAvatarScene } from './core/avatar/remoteAvatar';
+import { PostFX } from './core/render/postEffects';
 
 // ==================== Settings (Phase 4) ====================
 const settings: Settings = loadSettings();
@@ -72,10 +73,16 @@ function applyBackgroundMode(): void {
 }
 applyBackgroundMode();
 
+// Phase F: post-processing (Bloom)
+const postFx = new PostFX(renderer, scene, camera);
+postFx.enabled = settings.bloom ?? false;
+postFx.setStrength(settings.bloomStrength ?? 0.8);
+
 window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+  postFx.resize(window.innerWidth, window.innerHeight);
 });
 
 // ==================== state ====================
@@ -202,6 +209,9 @@ const settingsPanel = wireSettingsPanel(
     micSensitivityInput: $<HTMLInputElement>('micSensitivity'),
     micSensitivityValue: $<HTMLElement>('micSensitivity-val'),
     transparentBgInput:  $<HTMLInputElement>('transparentBg'),
+    bloomInput:          $<HTMLInputElement>('bloom'),
+    bloomStrengthInput:  $<HTMLInputElement>('bloomStrength'),
+    bloomStrengthValue:  $<HTMLElement>('bloomStrength-val'),
     resetBtn:            $<HTMLButtonElement>('reset-settings'),
   },
   settings,
@@ -210,11 +220,15 @@ const settingsPanel = wireSettingsPanel(
     onHipPosStrength: (v) => { settings.hipPosStrength = v; save(); },
     onMicSensitivity: (v) => { settings.micSensitivity = v; save(); },
     onTransparentBg:  (v) => { settings.transparentBg  = v; save(); applyBackgroundMode(); },
+    onBloom:          (v) => { settings.bloom = v; save(); postFx.enabled = v; },
+    onBloomStrength:  (v) => { settings.bloomStrength = v; save(); postFx.setStrength(v); },
     onReset: () => {
       Object.assign(settings, DEFAULT_SETTINGS, { toggles: { ...DEFAULT_SETTINGS.toggles } });
       clearSettings();
       settingsPanel.refresh(settings);
       applyBackgroundMode();
+      postFx.enabled = settings.bloom ?? false;
+      postFx.setStrength(settings.bloomStrength ?? 0.8);
       status.set('設定を既定値にリセットしました');
     },
   },
@@ -270,7 +284,7 @@ function animate(): void {
     }));
   }
 
-  renderer.render(scene, camera);
+  postFx.render(scene, camera);
   requestAnimationFrame(animate);
 }
 

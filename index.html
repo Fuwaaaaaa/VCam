@@ -83,6 +83,13 @@
       <div class="row">
         <label><input type="checkbox" id="transparentBg"> 透過背景 (Phase F)</label>
       </div>
+      <div class="row">
+        <label><input type="checkbox" id="bloom"> ブルーム効果</label>
+      </div>
+      <div class="row">
+        <div class="head"><span>ブルーム強度</span><span id="bloomStrength-val">0.80</span></div>
+        <input type="range" id="bloomStrength" min="0" max="3" step="0.1" value="0.8">
+      </div>
       <button id="reset-settings" type="button">既定値にリセット</button>
     </details>
   </div>
@@ -112,6 +119,7 @@
   -->
   <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js"></script>
   <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/selfie_segmentation.js"></script>
   <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"></script>
 
   <script type="module" src="/src/main.ts"></script>

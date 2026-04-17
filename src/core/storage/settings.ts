@@ -8,6 +8,8 @@ export const DEFAULT_SETTINGS: Settings = {
   hipPosStrength: 0.3,
   micSensitivity: 5,
   transparentBg: false,
+  bloom: false,
+  bloomStrength: 0.8,
 };
 
 /**
@@ -59,5 +61,7 @@ export function normalize(parsed: Partial<Settings>): Settings {
     hipPosStrength: clamp(parsed.hipPosStrength ?? DEFAULT_SETTINGS.hipPosStrength, 0, 1),
     micSensitivity: clamp(parsed.micSensitivity ?? DEFAULT_SETTINGS.micSensitivity, 1, 15),
     transparentBg:  typeof parsed.transparentBg === 'boolean' ? parsed.transparentBg : false,
+    bloom:          typeof parsed.bloom === 'boolean' ? parsed.bloom : (DEFAULT_SETTINGS.bloom ?? false),
+    bloomStrength:  clamp(parsed.bloomStrength ?? (DEFAULT_SETTINGS.bloomStrength ?? 0.8), 0, 3),
   };
 }
