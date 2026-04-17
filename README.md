@@ -1,207 +1,249 @@
-# VCam — VRM Face Tracking Desktop App
+# VCam
 
-Web カメラで顔を認識し、VRM アバターに顔の向き・表情・瞬きを反映するアプリ。
-Unity を使わず、最終的には Tauri で単一 exe として配布予定。
+**Web カメラで自分の顔や体の動きを読み取って、VRM アバターに反映させる PC 用アプリ。**
 
-## スタック
+- 顔の向き・目線・まばたき・口パクを自動で再現
+- マイクの声に合わせて口が動く
+- 上半身も下半身も追従 (Web カメラ 1 台でOK)
+- 複数人で同じ画面にアバターを並べられる (ネット越し)
+- OBS で配信に使える透過背景 / Bloom などの画面演出
 
-| 役割 | ライブラリ |
+![architecture](https://via.placeholder.com/800x300?text=VCam+screen+layout)
+
+---
+
+## 💡 こういう人向けです
+
+- VTuber 配信をしたいけど Unity や専用機材は面倒
+- 自分の VRM アバターを持っていて、Web カメラだけで動かしたい
+- VSeeFace / Luppet / 3tene の代わりに、軽くて無料で使えるものがほしい
+- 複数人のアバターを同じ画面に並べてコラボ配信したい
+
+---
+
+## 🚀 いちばん簡単な使い方
+
+### 1. アプリを起動する
+
+**パッケージ版 (beta)** — [Releases ページ](../../releases) から自分の OS の
+インストーラをダウンロードして実行します。
+
+| OS | 落とすファイル |
 |---|---|
-| ビルド / 開発 | Vite 5 + TypeScript 5 |
-| 3D レンダリング | [three.js](https://threejs.org/) 0.160 |
-| VRM 読込・制御 | [@pixiv/three-vrm](https://github.com/pixiv/three-vrm) 3.1 (VRM 1.0 / 0.x 両対応) |
-| 顔ランドマーク検出 | [@mediapipe/face_mesh](https://developers.google.com/mediapipe) (CDN 経由の UMD) |
-| ランドマーク→ボーン角度 | [kalidokit](https://github.com/yeemachine/kalidokit) 1.1 |
-| スムージング | 自作 One Euro Filter |
-| 単体テスト | Vitest 2 + happy-dom |
-| E2E | Playwright 1 + Chromium |
+| Windows | `VCam_x.x.x_x64-setup.exe` または `.msi` |
+| macOS | `VCam_x.x.x_x64.dmg` / `_aarch64.dmg` |
+| Linux | `vcam_x.x.x_amd64.AppImage` / `.deb` |
 
-## セットアップ
+インストール後、**デスクトップの VCam アイコン**をダブルクリックで起動します。
+初回起動時に Web カメラとマイクの許可を求められるので「許可」を選んでください。
+
+### 2. アバターを読み込む
+
+`.vrm` ファイル (VRM 形式のアバター) を用意します。持っていない場合は
+[⛩ VRoid Hub](https://hub.vroid.com/) から無料でダウンロードできます。
+
+- **方法 1**: アプリ画面 **左下の点線枠に .vrm ファイルをドラッグ&ドロップ**
+- **方法 2**: 点線枠をクリックしてファイル選択
+
+### 3. 顔を認識させる
+
+画面右上に自分のカメラ映像が表示されます。カメラに正面を向くとアバターが
+連動して動きます。
+
+### 4. 必要なら設定する
+
+画面右のボタンで各機能の ON/OFF:
+
+| ボタン | 意味 |
+|---|---|
+| 🎙 マイク ON/OFF | マイクの音量で口パクを強化する |
+| 👀 目線 ON/OFF | 目の向きをアバターに反映する |
+| 〰 スムージング | 動きの揺れを滑らかにする |
+| 👤 ポーズ ON/OFF | 腕・脚の動きを追従する |
+
+画面左の「⚙ 設定」パネル:
+- **脚の強度** — 膝より下がカメラに映らないなら 0.2〜0.3 に下げる
+- **ヒップ位置強度** — 動きが激しすぎるなら下げる
+- **マイク感度** — 小さい声で反応しないなら上げる
+- **透過背景** — OBS で合成するときは ON
+- **ブルーム効果** — 光らせて綺麗に見せる
+
+---
+
+## 🎨 VRChat のアバターを使いたい
+
+VRChat 用のアバターは **そのままでは使えません**。Unity で VRM 形式に変換する
+必要があります。詳しい手順は **[docs/VRCHAT_TO_VRM.md](docs/VRCHAT_TO_VRM.md)**
+をご覧ください。
+
+要約:
+1. Unity 2022.3 + VRChat SDK を用意
+2. 「VRM Converter for VRChat」というツールを Booth で購入 (500 円)
+3. Unity でアバターを読み込み、メニューから VRM エクスポート
+4. 生成した `.vrm` を VCam にドラッグ&ドロップ
+
+**⚠️ アバターのライセンスで「VRM 変換 OK」か必ず確認してください。** 禁止されて
+いる場合は使えません。
+
+VRM 対応モデルを探す方が楽な場合は:
+- [VRoid Hub](https://hub.vroid.com/) (無料、VRM 直接ダウンロード)
+- [VRoid Studio](https://vroid.com/studio) (無料、自作ツール)
+- [ニコニ立体](https://3d.nicovideo.jp/) (再配布 OK モデル多数)
+
+---
+
+## 📺 OBS で配信に使う
+
+1. VCam を起動、アバターを読み込む
+2. 「⚙ 設定 > 透過背景」を ON (アバターの背景が消える)
+3. OBS で「**ウィンドウキャプチャ**」を追加 → VCam のウィンドウを選ぶ
+4. OBS 側でクロマキー不要でそのまま合成できます
+
+仮想カメラとして他アプリ (Zoom 等) に流したい場合は、OBS の「**仮想カメラ**」
+機能を有効にしてください。
+
+---
+
+## 🌐 複数人でアバターを並べる (マルチバース)
+
+画面右下「🌐 マルチバース」パネル:
+
+1. アプリ起動すると「自分の Peer ID」が表示される (長い英数字の文字列)
+2. 一緒に使う相手に📋ボタンで ID をコピーして送る (Discord 等で)
+3. 相手は「相手の Peer ID」欄にそれを貼り付けて「接続」
+4. 両方のアバターが同じ画面に並んで動きます
+
+※ 会社のネットワークだとつながらない場合があります。家庭回線推奨。
+
+---
+
+## ❓ 困ったとき
+
+### カメラが動かない
+- アプリのカメラ許可を確認 (Windows 設定 > プライバシー > カメラ)
+- 他のアプリ (Zoom / OBS 等) がカメラを占有していないか確認
+
+### マイクに反応しない
+- マイク許可を確認
+- 画面右「🎙 マイク」ボタンが ON になっているか
+- 「⚙ 設定 > マイク感度」を上げる
+
+### アバターがカクつく / 揺れる
+- 画面右「〰 スムージング」が ON か確認
+- PC スペックが足りない場合は「👤 ポーズ」OFF で軽くなります
+
+### 脚が変に動く
+- 「⚙ 設定 > 脚の強度」を 0.2 くらいに下げる
+- 膝より下がカメラに映るとこの問題は出にくい
+
+### アバターが真っ黒 / 妙な色
+- VRM 変換時にシェーダが壊れた可能性 (特に VRChat 出身の場合)
+- [docs/VRCHAT_TO_VRM.md](docs/VRCHAT_TO_VRM.md) の「よくある詰まりポイント」参照
+
+---
+
+## 🛠 開発者向け
+
+自分でビルドしたい・中身を改造したい場合:
+
+<details>
+<summary>クリックで展開</summary>
+
+### 環境
+
+- Node.js 20 以上
+- npm (または pnpm)
+- (Tauri ビルド時) Rust 1.77 以上 + 各 OS のビルドツール
+
+### 起動
 
 ```bash
-cd C:\project\test\a\VCam
+git clone https://github.com/Fuwaaaaaa/VCam.git
+cd VCam
 npm install
-npx playwright install chromium   # 初回のみ (E2E 用、~180MB)
+npx playwright install chromium  # 初回のみ、E2E テスト用
+
+npm run dev          # ブラウザ版 http://127.0.0.1:5173
+npm run tauri:dev    # デスクトップアプリ版 (Rust ビルド 5-10 分)
 ```
 
-## 開発
+### スタック
+
+| 役割 | 使用ライブラリ |
+|---|---|
+| ビルド | Vite 5 + TypeScript 5 |
+| デスクトップ外殻 | Tauri 2 |
+| 3D | three.js 0.160 |
+| VRM | @pixiv/three-vrm 3.1 |
+| 顔認識 | @mediapipe/face_mesh (CDN) |
+| 姿勢認識 | @mediapipe/pose (CDN) |
+| 角度計算 | kalidokit 1.1 |
+| P2P 通信 | peerjs 1.5 |
+| 単体テスト | Vitest 2 |
+| E2E | Playwright 1 |
+
+### テスト
 
 ```bash
-npm run dev            # Vite dev server (http://127.0.0.1:5173)
-npm run typecheck      # TypeScript 型チェック
-npm run test           # 単体テスト (1 回実行)
-npm run test:watch     # 単体テスト watch モード
-npm run test:ui        # Vitest UI
-npm run test:e2e       # E2E (Playwright)
-npm run build          # プロダクションビルド (dist/)
-npm run preview        # プロダクションビルドをローカルでプレビュー
+npm run typecheck    # TypeScript 型チェック
+npm run test         # 単体テスト (Vitest)
+npm run test:e2e     # E2E (Playwright + Chromium)
+npm run build        # プロダクションビルド (dist/)
 ```
 
-## VRM モデルを用意
-
-- **(a) 自動読込**: `public/samples/sample.vrm` に配置 → ページ読み込み時に自動表示
-- **(b) ドラッグ&ドロップ**: ページを開いてから、左下のドロップ領域に `.vrm` をドロップ
-- **(c) ファイル選択**: 左下のドロップ領域をクリック → ファイルダイアログから選択
-
-### 無料・再配布可能な VRM の入手先
-- **VRoid Hub** — https://hub.vroid.com/ (ライセンスフィルタで「再配布OK」を絞込)
-- **ニコニ立体** — https://3d.nicovideo.jp/works.html?type_filters=VrmFile
-- **VRoid Studio** (自作) — https://vroid.com/studio
-
-## ディレクトリ構造
+### ディレクトリ
 
 ```
 VCam/
-├── index.html                  # Vite entry (MediaPipe UMD の <script> 含む)
 ├── src/
-│   ├── main.ts                 # エントリ: scene / boot / event wiring
-│   ├── types.ts                # FaceRig, AppOptions, ExpressionValues
+│   ├── main.ts                       # エントリ
+│   ├── types.ts                      # 型定義
 │   ├── core/
-│   │   ├── math/clamp.ts       # clamp01, lerp, clamp
-│   │   ├── filters/
-│   │   │   ├── OneEuroFilter.ts      # 単軸 OneEuro フィルタ
-│   │   │   └── rigFilterSet.ts       # Rig 各軸用のフィルタ束
-│   │   ├── avatar/
-│   │   │   ├── loadVRM.ts            # VRM 読込 + disposeVRM
-│   │   │   ├── applyRig.ts           # 毎フレームの VRM 反映 (統合)
-│   │   │   ├── applyHead.ts          # 頭+首の回転計算 (pure)
-│   │   │   └── applyExpressions.ts   # 表情計算 (pure)
-│   │   ├── audio/micLevel.ts   # computeMicLevel (pure) + MicTracker (stateful)
-│   │   └── tracking/faceMesh.ts      # MediaPipe + Kalidokit wiring
-│   └── ui/
-│       ├── status.ts           # ステータスパネル
-│       ├── dropZone.ts         # VRM ドラッグ&ドロップ
-│       └── controls.ts         # マイク/目線/スムージング トグルボタン
-├── tests/
-│   ├── unit/                   # Vitest (happy-dom)  — 42 tests
-│   └── e2e/                    # Playwright (Chromium) — 4 tests
-├── package.json, tsconfig.json, vite.config.ts, vitest.config.ts, playwright.config.ts
-├── TODOS.md
-└── .gitignore
+│   │   ├── avatar/                   # VRM 読込 & ボーン反映
+│   │   ├── audio/                    # マイク入力
+│   │   ├── filters/                  # One Euro Filter (スムージング)
+│   │   ├── math/                     # 数学ユーティリティ
+│   │   ├── net/                      # PeerJS マルチバース
+│   │   ├── render/                   # ポストエフェクト + 背景
+│   │   ├── storage/                  # localStorage 設定永続化
+│   │   └── tracking/                 # MediaPipe face + pose
+│   └── ui/                           # UI コンポーネント
+├── src-tauri/                        # Rust デスクトップ外殻
+├── tests/unit/                       # Vitest
+├── tests/e2e/                        # Playwright
+├── docs/                             # ドキュメント
+├── .github/workflows/                # CI / Release
+├── package.json / vite.config.ts 等
 ```
 
-## データフロー
+### 実装済みフェーズ
 
-```
-    ┌─────────────────────────┐
-    │   index.html (Vite)     │
-    │   ├─ CDN: MediaPipe UMD │
-    │   └─ <script>: /src/main.ts
-    └────────────┬────────────┘
-                 ▼
-    ┌────────────────────────────────────┐
-    │            main.ts (boot)          │
-    │  - scene / renderer / camera       │
-    │  - wire UI (controls, drop zone)   │
-    │  - createFaceTracker()             │
-    │  - requestAnimationFrame loop      │
-    └────────────┬───────────────────────┘
-                 │
-    ┌──────────────────────────────┐
-    │   createTracker (shared Cam) │
-    └────────────┬─────────────────┘
-                 │ sequential send per frame
-    ┌────────────┼──────────────┬──────────────┐
-    │            │              │              │
-    ▼            ▼              ▼              ▼
-[FaceMesh] [Pose Landmarker] [MicTracker]  (idle)
-    │            │              │
-    ▼            ▼              ▼
- FaceRig      PoseRig       micLevel (0..1)
-    │            │              │
-    │            │   ┌──────────┘
-    │            │   │
-    ▼            ▼   ▼
- applyRig(face) computePoseBoneRotations ─▶ applyBoneRotations
-    │                                        │
-    ▼                                        ▼
- head+neck + expressions            spine, hips, L/R arms, L/R hands
-    │                                        │
-    └────────────┬───────────────────────────┘
-                 ▼
-       vrm.humanoid + vrm.expressionManager
-                 │
-                 ▼
-           renderer.render()
-```
+- ✅ Phase 2-A: 顔トラッキング + 基本表情
+- ✅ Phase 2-B: リップシンク + 目線 + スムージング
+- ✅ Phase 3-a: 上半身トラッキング
+- ✅ Phase 3-b: 下半身トラッキング + hip 位置オフセット
+- ✅ Phase 4: 設定 UI + 永続化
+- ✅ Phase 5: Tauri デスクトップパッケージング
+- ✅ Phase E: マルチバース (WebRTC)
+- ✅ Phase F: 透過背景 + Bloom
 
-## 反映されている要素
+テストカバレッジ:
+- 74 unit tests / 5 E2E smoke tests
+- TypeScript strict mode
 
-### Face (Phase 2-A/B)
-- ✅ 頭の向き (yaw / pitch / roll)
-- ✅ 首の向き (頭の 30% 分配)
-- ✅ 瞬き (左右独立)
-- ✅ 口の開き (AIUEO 5 母音 BlendShape)
-- ✅ 目線追従 (lookLeft / lookRight / lookUp / lookDown)
-- ✅ 眉 → surprised / sad BlendShape
-- ✅ マイクベースのリップシンク (音量と口形の大きい方)
-- ✅ One Euro Filter スムージング
+</details>
 
-### Pose (Phase 3-a / 3-b)
-- ✅ 背骨 (spine) の傾き
-- ✅ ヒップ (hips) の回転
-- ✅ 左右の上腕 / 前腕 / 手首
-- ✅ 左右の太もも (leftUpperLeg / rightUpperLeg) — Phase 3-b
-- ✅ 左右の膝 (leftLowerLeg / rightLowerLeg) — Phase 3-b
-- ✅ Hips 位置オフセット (X/Y、Z は webcam 深度不安定のため除外) — Phase 3-b
-- ✅ 床突き抜け防止 clamp (Y: -0.2m 〜 +0.5m) — Phase 3-b
-- ✅ 脚用フィルタは minCutoff=0.5 で安定重視
-- ✅ `legStrength` / `hipPosStrength` 係数で追従量を調整可能
-- 👤 ポーズ ON/OFF トグル (UI)
+---
 
-## Pose のチューニング
+## 📜 ライセンス
 
-`src/main.ts` 冒頭の定数で挙動を調整:
+このアプリ自体は MIT ライセンス (予定)。
+**利用する VRM モデルのライセンスは、各モデル作者の規約に従ってください。**
+VCam はモデルを同梱しません。
 
-| 定数 | 既定 | 用途 |
-|---|---|---|
-| `LEG_STRENGTH` | `1.0` | 脚の追従強度 (0..1)。膝より下がカメラに映らないセットアップでは `0.2〜0.3` 推奨 |
-| `HIP_POS_STRENGTH` | `0.3` | Hips 位置オフセット強度。`1.0` でアバターが跳ね回るので基本は低め |
-| `MIRROR_WEBCAM` | `true` | webcam が CSS で鏡像表示されている前提 (y/z 軸反転) |
+---
 
-Pose モデル複雑度は `src/core/tracking/poseProcessor.ts` の `modelComplexity: 1` で
-0 (Lite) / 1 (Full) / 2 (Heavy) を選択可能。低スペック PC は 0 に。
+## 📫 フィードバック
 
-## 未実装 (TODOS.md 参照)
-- ⬜ localStorage 設定永続化 (T-002, Phase 4)
-- ⬜ サンプル VRM 同梱 (T-001)
-- ⬜ Tauri パッケージング (Phase 5)
-- ⬜ マルチバース (Phase E)
-- ⬜ AR 演出 (Phase F)
-
-## トラブルシューティング
-
-### 画面が真っ黒、VRM が出ない
-- コンソール (F12) でエラー確認
-- `public/samples/sample.vrm` が無ければ、ドラッグ&ドロップで VRM を投入
-
-### カメラが起動しない
-- ブラウザのカメラ許可を確認
-- 他アプリ (Zoom / OBS 等) が占有していないか
-- `http://127.0.0.1:5173` で開く (生 IP や `file://` は NG)
-
-### 顔は認識するが動きがカクつく / 揺れる
-- 右パネルの「〰 スムージング ON」を確認
-- `src/core/filters/rigFilterSet.ts` の `minCutoff` を下げるとジッタ減、`beta` を上げると速い動きへの追従向上
-
-### マイクを ON にしても口が動かない
-- `src/core/audio/micLevel.ts` の `sensitivity` (既定 5) を上げる
-- 顔の口形と max ブレンドなので、顔で閉口を強く検出している間は上書きされる
-
-## 次のマイルストーン
-
-設計ドキュメント: `C:\Users\柳田風和\.claude\plans\image-1-image-2-bubbly-sparrow.md`
-
-- Phase 2-A: 顔追従 + 基本表情 ✅
-- Phase 2-B: リップシンク + 目線 + スムージング ✅
-- Vite + TS + Vitest + Playwright migration ✅
-- Phase 3-a: 上半身トラッキング ✅
-- Phase 3-b: 全身トラッキング + hip 位置オフセット + 床 clamp ✅
-- Phase 4: 設定パネル + localStorage 永続化 + スライダ調整 ✅
-- Phase 5: Tauri デスクトップパッケージング + CI/CD ✅
-- Phase E: マルチバース (WebRTC / PeerJS) ✅
-- **Phase F: AR 演出 (透過背景 / Bloom ポストエフェクト) ✅ ← いまここ**
-- Phase 4: UI / 設定永続化
-- Phase 5: Tauri パッケージング
-- Phase E: マルチバース
-- Phase F: AR 演出
+- バグ報告 / 要望: [GitHub Issues](../../issues)
+- 詳しいドキュメント: [`docs/`](docs/) フォルダ
