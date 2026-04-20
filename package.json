@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "VRM face tracking desktop app (VCam) — three-vrm + MediaPipe + Kalidokit",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
