@@ -27,11 +27,15 @@ export class MicTracker {
   get level(): number { return this._level; }
   get enabled(): boolean { return this.analyser !== null; }
 
-  async enable(): Promise<void> {
+  async enable(opts: { deviceId?: string | null } = {}): Promise<void> {
     if (this.enabled) return;
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false },
-    });
+    const audio: MediaTrackConstraints = {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: false,
+    };
+    if (opts.deviceId) audio.deviceId = { exact: opts.deviceId };
+    this.stream = await navigator.mediaDevices.getUserMedia({ audio });
     // T-003 critical gap: AudioContext が suspended 状態で来るブラウザがある
     const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     this.ctx = new AC();

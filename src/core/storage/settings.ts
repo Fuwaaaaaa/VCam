@@ -10,6 +10,8 @@ export const DEFAULT_SETTINGS: Settings = {
   transparentBg: false,
   bloom: false,
   bloomStrength: 0.8,
+  cameraDeviceId: null,
+  micDeviceId: null,
 };
 
 /**
@@ -63,5 +65,7 @@ export function normalize(parsed: Partial<Settings>): Settings {
     transparentBg:  typeof parsed.transparentBg === 'boolean' ? parsed.transparentBg : false,
     bloom:          typeof parsed.bloom === 'boolean' ? parsed.bloom : (DEFAULT_SETTINGS.bloom ?? false),
     bloomStrength:  clamp(parsed.bloomStrength ?? (DEFAULT_SETTINGS.bloomStrength ?? 0.8), 0, 3),
+    cameraDeviceId: typeof parsed.cameraDeviceId === 'string' ? parsed.cameraDeviceId : null,
+    micDeviceId:    typeof parsed.micDeviceId    === 'string' ? parsed.micDeviceId    : null,
   };
 }

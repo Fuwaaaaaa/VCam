@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **デバイス選択 UI (T-007)**: 複数カメラ / 複数マイクを画面左「⚙ 設定」パネル
+  の `<select>` から切替可能に。選択値は localStorage (`vcam:settings:v1` の
+  `cameraDeviceId` / `micDeviceId`) に永続化。`navigator.mediaDevices.devicechange`
+  を監視して、USB カメラの抜き差しにも追従。
+- `src/core/devices/enumerate.ts` — `listDevices()` が cameras/mics を分離して返す。
+  permission 取得前で label が空の場合は「カメラ 1」「マイク 1」のフォールバック。
+- `Tracker.switchCamera(deviceId)` — 実行中のストリームを張り直して別カメラへ切替。
+
+### Changed
+
+- Tracker の frame driver を `@mediapipe/camera_utils` (`window.Camera`) から
+  独自の `getUserMedia` + rAF ループに置換。deviceId 指定を可能にするため。
+  外部 CDN 依存が 1 本減少 (`camera_utils.js` / `__cameraUtilsCdnFailed` フック
+  を削除)。`MicTracker.enable()` に `{ deviceId }` オプションを追加。
+
 ### Pending
 
 - **T-001 part 2/2** (実 VRM ファイル同梱): `public/samples/sample.vrm`

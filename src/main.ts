@@ -10,6 +10,7 @@ import { createRigFilterSet, resetRigFilterSet } from './core/filters/rigFilterS
 import { createPoseFilterSet, resetPoseFilterSet } from './core/filters/poseFilterSet';
 import { MicTracker } from './core/audio/micLevel';
 import { createTracker } from './core/tracking/tracker';
+import { listDevices } from './core/devices/enumerate';
 import { createStatus } from './ui/status';
 import { wireDropZone } from './ui/dropZone';
 import { wireControls } from './ui/controls';
@@ -176,7 +177,7 @@ const ctrl = wireControls(
   {
     onMicToggle: async (next) => {
       if (next) {
-        try { await mic.enable(); settings.toggles.mic = true; save(); return true; }
+        try { await mic.enable({ deviceId: settings.micDeviceId }); settings.toggles.mic = true; save(); return true; }
         catch (e) { status.set(`マイク起動失敗: ${(e as Error).message}`); return false; }
       }
       mic.disable();
@@ -233,6 +234,60 @@ const settingsPanel = wireSettingsPanel(
     },
   },
 );
+
+// ==================== Device selection (T-007) ====================
+const cameraSelect = $<HTMLSelectElement>('cameraSelect');
+const micSelect    = $<HTMLSelectElement>('micSelect');
+
+async function refreshDeviceSelects(): Promise<void> {
+  const { cameras, mics } = await listDevices();
+  const fill = (sel: HTMLSelectElement, entries: { deviceId: string; label: string }[], selected: string | null): void => {
+    sel.innerHTML = '';
+    const def = document.createElement('option');
+    def.value = '';
+    def.textContent = '（既定）';
+    sel.appendChild(def);
+    for (const e of entries) {
+      const opt = document.createElement('option');
+      opt.value = e.deviceId;
+      opt.textContent = e.label;
+      sel.appendChild(opt);
+    }
+    sel.value = selected && entries.some((e) => e.deviceId === selected) ? selected : '';
+  };
+  fill(cameraSelect, cameras, settings.cameraDeviceId ?? null);
+  fill(micSelect,    mics,    settings.micDeviceId ?? null);
+}
+
+cameraSelect.addEventListener('change', async () => {
+  const id = cameraSelect.value || null;
+  settings.cameraDeviceId = id;
+  save();
+  if (trackerRef) {
+    try { await trackerRef.switchCamera(id); }
+    catch (e) { status.set(`カメラ切替失敗: ${(e as Error).message}`); }
+  }
+});
+
+micSelect.addEventListener('change', async () => {
+  const id = micSelect.value || null;
+  settings.micDeviceId = id;
+  save();
+  if (mic.enabled) {
+    mic.disable();
+    try { await mic.enable({ deviceId: id }); }
+    catch (e) { status.set(`マイク切替失敗: ${(e as Error).message}`); }
+  }
+});
+
+if (typeof navigator !== 'undefined' && navigator.mediaDevices?.addEventListener) {
+  navigator.mediaDevices.addEventListener('devicechange', () => {
+    refreshDeviceSelects().catch(() => {});
+  });
+}
+
+// permission 取得前でも deviceId だけは列挙される (label は空)。初期化時に一度呼ぶ。
+refreshDeviceSelects().catch(() => {});
 
 // ==================== Animation loop ====================
 const clock = new THREE.Clock();
@@ -299,7 +354,7 @@ async function boot(): Promise<void> {
   }
 
   // CDN script 本体の 404/ネットワーク失敗を即時判定 (index.html の onerror フック)
-  if (window.__faceMeshCdnFailed || window.__poseCdnFailed || window.__cameraUtilsCdnFailed) {
+  if (window.__faceMeshCdnFailed || window.__poseCdnFailed) {
     status.set('顔認識ライブラリのダウンロードに失敗しました。ネットワークを確認のうえページを再読込してください。');
     return;
   }
@@ -312,9 +367,11 @@ async function boot(): Promise<void> {
         console.error(`[tracker:${phase}]`, err);
         status.set(`トラッキングエラー (${phase}): ${(err as Error).message ?? err}`);
       },
-    });
+    }, { deviceId: settings.cameraDeviceId });
     trackerRef.enablePose(toggles.pose);
     await trackerRef.start();
+    // permission 取得後は label が埋まるのでデバイスリストを再同期
+    refreshDeviceSelects().catch(() => {});
   } catch (e) {
     status.set(`カメラ起動失敗: ${(e as Error).message}<br />ブラウザのカメラ許可を確認してください。`);
     return;

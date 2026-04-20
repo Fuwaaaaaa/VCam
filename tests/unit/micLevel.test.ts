@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { computeMicLevel } from '../../src/core/audio/micLevel';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { computeMicLevel, MicTracker } from '../../src/core/audio/micLevel';
 
 describe('computeMicLevel', () => {
   it('silence (all 128) → 0', () => {
@@ -35,5 +35,59 @@ describe('computeMicLevel', () => {
     const buf = new Uint8Array(1024).fill(128 + offset);
     const rmsNoSensitivity = computeMicLevel(buf, 1);
     expect(rmsNoSensitivity).toBeCloseTo(offset / 128, 3);
+  });
+});
+
+describe('MicTracker.enable deviceId', () => {
+  const origNav = globalThis.navigator;
+  const origAC = (globalThis as { AudioContext?: unknown }).AudioContext;
+  let getUserMedia: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    const fakeStream = { getTracks: () => [] } as unknown as MediaStream;
+    getUserMedia = vi.fn().mockResolvedValue(fakeStream);
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: { mediaDevices: { getUserMedia } },
+    });
+    class FakeCtx {
+      state = 'running';
+      createMediaStreamSource() { return { connect: () => {} }; }
+      createAnalyser() {
+        return { fftSize: 1024, smoothingTimeConstant: 0, connect: () => {}, getByteTimeDomainData: () => {} };
+      }
+      async resume() { /* noop */ }
+      async close() { /* noop */ }
+    }
+    (globalThis as { AudioContext?: unknown }).AudioContext = FakeCtx;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: origNav });
+    (globalThis as { AudioContext?: unknown }).AudioContext = origAC;
+  });
+
+  it('passes deviceId as exact constraint when provided', async () => {
+    const t = new MicTracker();
+    await t.enable({ deviceId: 'mic-xyz' });
+    expect(getUserMedia).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audio: expect.objectContaining({ deviceId: { exact: 'mic-xyz' } }),
+      }),
+    );
+  });
+
+  it('omits deviceId constraint when not provided', async () => {
+    const t = new MicTracker();
+    await t.enable();
+    const args = getUserMedia.mock.calls[0][0] as { audio: MediaTrackConstraints };
+    expect(args.audio.deviceId).toBeUndefined();
+  });
+
+  it('omits deviceId constraint when null', async () => {
+    const t = new MicTracker();
+    await t.enable({ deviceId: null });
+    const args = getUserMedia.mock.calls[0][0] as { audio: MediaTrackConstraints };
+    expect(args.audio.deviceId).toBeUndefined();
   });
 });
