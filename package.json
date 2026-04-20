@@ -1,6 +1,6 @@
 {
   "name": "vcam",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "private": true,
   "type": "module",
   "description": "VRM face tracking desktop app (VCam) — three-vrm + MediaPipe + Kalidokit",
