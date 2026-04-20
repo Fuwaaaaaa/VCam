@@ -38,6 +38,10 @@ export type PoseProcessorOptions = {
 export type PoseProcessor = {
   send: (video: HTMLVideoElement) => Promise<void>;
   close: () => void;
+  /** onResults が一度でも呼ばれたか (= tflite/wasm が解決し推論が動き始めたか) */
+  isActive: () => boolean;
+  /** isActive が true になるまで polling で待つ。timeout でも false を返す */
+  waitForActive: (timeoutMs: number) => Promise<boolean>;
 };
 
 /**
@@ -73,7 +77,11 @@ export function createPoseProcessor(
   }
 
   let latestVideo: HTMLVideoElement | null = null;
+  // tflite/wasm の遅延ロード失敗を「人物が映ってない」と区別するためのフラグ。
+  // landmarks が空でも onResults 自体は呼ばれるので、ここで true を立てる。
+  let rawCallbackFired = false;
   pose.onResults((results: PoseResults) => {
+    rawCallbackFired = true;
     const lm2d = results.poseLandmarks;
     const lm3d = results.poseWorldLandmarks;
     if (!lm2d || !lm3d) return;
@@ -96,5 +104,14 @@ export function createPoseProcessor(
       catch (e) { callbacks.onError?.(e, 'send'); }
     },
     close: () => { pose.close?.(); },
+    isActive: () => rawCallbackFired,
+    waitForActive: async (timeoutMs) => {
+      const start = performance.now();
+      while (!rawCallbackFired) {
+        if (performance.now() - start > timeoutMs) return false;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      return true;
+    },
   };
 }

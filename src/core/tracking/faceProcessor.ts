@@ -20,6 +20,10 @@ export type FaceProcessor = {
   /** Camera から受け取った 1 フレームを FaceMesh に送る */
   send: (video: HTMLVideoElement) => Promise<void>;
   close: () => void;
+  /** onResults が一度でも呼ばれたか (= tflite/wasm が解決し推論が動き始めたか) */
+  isActive: () => boolean;
+  /** isActive が true になるまで polling で待つ。timeout でも false を返す */
+  waitForActive: (timeoutMs: number) => Promise<boolean>;
 };
 
 /**
@@ -54,7 +58,11 @@ export function createFaceProcessor(callbacks: FaceCallbacks): FaceProcessor {
   }
 
   let latestVideo: HTMLVideoElement | null = null;
+  // tflite/wasm の遅延ロード失敗を「顔が映ってない」と区別するためのフラグ。
+  // landmarks が空でも onResults 自体は呼ばれるので、ここで true を立てる。
+  let rawCallbackFired = false;
   faceMesh.onResults((results: FaceResults) => {
+    rawCallbackFired = true;
     const lm = results.multiFaceLandmarks?.[0];
     if (!lm) return;
     try {
@@ -72,5 +80,14 @@ export function createFaceProcessor(callbacks: FaceCallbacks): FaceProcessor {
       catch (e) { callbacks.onError?.(e, 'send'); }
     },
     close: () => { faceMesh.close?.(); },
+    isActive: () => rawCallbackFired,
+    waitForActive: async (timeoutMs) => {
+      const start = performance.now();
+      while (!rawCallbackFired) {
+        if (performance.now() - start > timeoutMs) return false;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      return true;
+    },
   };
 }

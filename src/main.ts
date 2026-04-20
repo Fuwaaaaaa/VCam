@@ -298,6 +298,12 @@ async function boot(): Promise<void> {
     status.set('VRM ファイルを画面左下にドラッグ&ドロップしてください。');
   }
 
+  // CDN script 本体の 404/ネットワーク失敗を即時判定 (index.html の onerror フック)
+  if (window.__faceMeshCdnFailed || window.__poseCdnFailed || window.__cameraUtilsCdnFailed) {
+    status.set('顔認識ライブラリのダウンロードに失敗しました。ネットワークを確認のうえページを再読込してください。');
+    return;
+  }
+
   try {
     trackerRef = await createTracker(videoEl, {
       onFaceRig: (rig) => { latestFaceRig = rig; },
@@ -312,6 +318,16 @@ async function boot(): Promise<void> {
   } catch (e) {
     status.set(`カメラ起動失敗: ${(e as Error).message}<br />ブラウザのカメラ許可を確認してください。`);
     return;
+  }
+
+  // tflite/wasm の遅延ロード失敗を 8 秒で検知 (animate 開始を遅延させないよう non-blocking)
+  trackerRef.waitForFaceActive(8000).then((ok) => {
+    if (!ok) status.set('顔認識モデルの読み込みに失敗しました。ネットワークを確認のうえページを再読込してください。');
+  });
+  if (toggles.pose) {
+    trackerRef.waitForPoseActive(8000).then((ok) => {
+      if (!ok) status.append('<br />ポーズ認識モデルの読み込みに失敗しました（顔のみで継続します）。');
+    });
   }
 
   animate();

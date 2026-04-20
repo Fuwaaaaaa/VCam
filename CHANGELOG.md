@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **CDN/モデル読み込み失敗の通知 (T-003)**: MediaPipe (`face_mesh.js` / `pose.js`
+  / `camera_utils.js`) の CDN script 本体が 404 やネットワーク失敗で読み込めな
+  かった場合、起動時に status パネルに「顔認識ライブラリのダウンロードに失敗
+  しました」と表示する (従来はサイレント失敗)。
+- tflite/wasm の遅延ロード失敗を 8 秒タイムアウトで検知し、「顔認識モデルの読
+  み込みに失敗しました」を status へ通知。`onResults` の発火有無で「ライブラリ
+  未ロード」と「カメラに顔が映っていない」を区別。
+- `FaceProcessor` / `PoseProcessor` / `Tracker` に `isActive()` /
+  `waitForActive(timeoutMs)` API を追加。
+- E2E テスト `tests/e2e/cdn-failure.spec.ts` で CDN abort 時の status 文言を検証。
+
+### Investigated and dropped
+
+- **T-004** (applyRig / remoteAvatar の新フレーム seq ガード): 事前検証で仮説
+  が falsified。`OneEuroFilter` は同値連続呼出で derivative が退化せず、追従
+  劣化は発生しないため不要と判定。`tests/unit/OneEuroFilter.test.ts` に
+  regression test を追加。
+
+---
+
 ## [0.1.0-beta.1] — 2026-04-17
 
 **初の beta リリース**。Web カメラで顔・体の動きを VRM アバターに反映させる
