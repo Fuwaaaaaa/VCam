@@ -22,6 +22,7 @@
     #settings .row .head { display: flex; justify-content: space-between; align-items: center; }
     #settings input[type=range] { width: 100%; }
     #settings input[type=checkbox] { margin-right: 6px; }
+    #settings select { width: 100%; background: #1a1a1a; color: #eee; border: 1px solid #555; border-radius: 3px; padding: 3px 6px; font-size: 12px; }
     #settings button { background: #2a2a2a; color: #eee; border: 1px solid #555; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; margin-top: 10px; }
     #settings button:hover { background: #3a3a3a; }
     #multiverse { bottom: 100px; right: 12px; min-width: 260px; }
@@ -68,6 +69,14 @@
   <div id="settings" class="panel">
     <details>
       <summary>⚙ 設定</summary>
+      <div class="row">
+        <div class="head"><span>カメラ</span></div>
+        <select id="cameraSelect"><option value="">（既定）</option></select>
+      </div>
+      <div class="row">
+        <div class="head"><span>マイク</span></div>
+        <select id="micSelect"><option value="">（既定）</option></select>
+      </div>
       <div class="row">
         <div class="head"><span>脚の強度</span><span id="legStrength-val">1.00</span></div>
         <input type="range" id="legStrength" min="0" max="1" step="0.05" value="1">
@@ -120,7 +129,6 @@
   <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js" onerror="window.__faceMeshCdnFailed=true"></script>
   <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" onerror="window.__poseCdnFailed=true"></script>
   <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/selfie_segmentation.js"></script>
-  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" onerror="window.__cameraUtilsCdnFailed=true"></script>
 
   <script type="module" src="/src/main.ts"></script>
 </body>

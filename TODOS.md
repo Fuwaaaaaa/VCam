@@ -58,6 +58,62 @@
 - [unit] 新しい seq で呼ばれたら filter.filter() を呼ぶ
 - [unit] rigSerialize の encodeMessage/decodeMessage で seq が往復する
 
+### T-007: デバイス選択 UI (camera + mic)
+**What:** 複数カメラ / 複数マイクを切替できる UI を追加。選択値は localStorage に永続化。
+**Why:** 外部 USB カメラ / Web カム内蔵マイクが混在する実機では、OS 既定デバイスが意図通りとは限らない。VTuber 用途でユーザー要望の頻度が高い割に実装コスト小。
+**Pros:** Web/Tauri 共通で動く。既存 `getUserMedia` 経路の置き換えのみ。
+**Cons:** `@mediapipe/camera_utils` の `Camera` は deviceId 指定を持たないため、独自の rAF frame driver に置換が必要。
+**Implementation:**
+- 新設 `src/core/devices/enumerate.ts` — `navigator.mediaDevices.enumerateDevices()` を `{cameras, mics}` にラップ。label は permission 取得後にのみ埋まる仕様をドキュメント化。
+- `tracker.ts` を rework: `window.Camera` の代わりに `getUserMedia({video:{deviceId}})` + rAF ループ。既存 `@mediapipe/camera_utils` CDN は削除。
+- `MicTracker.enable(opts?: {deviceId?: string})` に deviceId を追加。
+- `Settings` に `cameraDeviceId?: string | null` / `micDeviceId?: string | null` を追加 (normalize も更新)。
+- index.html `#settings` にカメラ/マイク `<select>` を追加。`navigator.mediaDevices.ondevicechange` で再列挙。
+**Tests:**
+- [unit] `enumerate.test.ts` — mock `navigator.mediaDevices` でカテゴリ分離
+- [unit] `settings.test.ts` 拡張 — cameraDeviceId/micDeviceId が normalize で保持される
+- [unit] `micLevel.test.ts` 拡張 — enable(deviceId) が constraints に反映される
+- [E2E] `device-selection.spec.ts` — selector が表示され、optons が 1 件以上 enumerate される (fake device)
+**Depends on:** なし
+**Target phase:** 次回 patch PR
+
+### T-008: 録画 + スクショ機能
+**What:** three.js canvas をキャプチャして (a) PNG スクショ単発保存、(b) webm クリップ録画 (開始/停止) をサポート。
+**Why:** デモ動画・README スクショ・ユーザー自身の配信切抜きに使える。外部ツール不要で VCam 単体で完結。
+**Pros:** `HTMLCanvasElement.captureStream()` + `MediaRecorder` で Web API のみ、Tauri 追加処理不要。
+**Cons:** ブラウザコーデック差 (Chrome/Edge は webm/VP9 OK、Safari は mp4 に要調整。当面 Chromium 前提)。
+**Implementation:**
+- `src/core/capture/recorder.ts` — `createRecorder(canvas)` が `start()/stop(): Promise<Blob>` を返す薄いラッパ。MediaRecorder 非対応時はエラー。
+- `src/core/capture/screenshot.ts` — `captureCanvasPNG(canvas): Promise<Blob>` を toBlob でラップ。
+- UI: `#controls` に 📸 スクショ / ⏺ 録画ボタンを追加。録画中は赤点滅 (DESIGN.md: `#E8482C` warn 色)。
+- ダウンロードは `<a download>` を動的生成 → click → revoke。
+**Tests:**
+- [unit] `recorder.test.ts` — MediaRecorder mock で start→stop フローで Blob が生成される
+- [unit] `screenshot.test.ts` — canvas.toBlob を mock して PNG Blob
+- [E2E] `capture.spec.ts` — スクショボタンクリックで download 属性付き URL が生成される
+**Depends on:** なし
+**Target phase:** T-007 の次 PR
+
+### T-009: VMC プロトコル送信 (OSC/UDP)
+**What:** VSeeFace 互換の VMC Protocol (OSC over UDP) で rig データを外部ツールに送信。Tauri 版のみサポート。
+**Why:** 既存 VTuber エコシステム (MotionBuilder / VMC Receiver 対応アプリ) と連携可能に。配信側で複数ツール併用したいユーザーの要望。
+**Pros:** 既存 `encodeMessage` で rig 形式は確立済。VMC 仕様に mapping するだけ。
+**Cons:** UDP が Web では使えず Tauri invoke 経由必須 → Web/Tauri の機能差が露出。Rust 側 `tokio-udp` or 同等の依存追加、`tauri.conf.json` の `allowlist.shell`/net 設定再点検。
+**Implementation:**
+- `src-tauri/src/vmc.rs` — `send_vmc(addr: String, port: u16, packets: Vec<Vec<u8>>) -> Result<(), String>` を `#[tauri::command]` で公開。`UdpSocket::bind("0.0.0.0:0")` + send_to をループ。
+- Rust deps: `rosc`（OSC encoder）追加。
+- `src/core/net/vmcEncode.ts` — FaceRig/PoseRig を VMC の bone address (`/VMC/Ext/Bone/Pos` 等) に変換し Uint8Array[] を返す pure 関数。
+- `src/core/net/vmcSender.ts` — Tauri `invoke('send_vmc', ...)` を呼ぶ薄い wrapper。Web 版では no-op + warn。
+- `Settings` に `vmcEnabled: boolean`, `vmcHost: string`, `vmcPort: number` (既定 39539) を追加。
+- UI: 新パネル `#vmc` で host/port 入力 + toggle。Tauri 判定で非表示 (Web 版)。
+**Tests:**
+- [unit] `vmcEncode.test.ts` — FaceRig から VMC OSC packet (bundle) への変換が仕様通り
+- [unit] `vmcSender.test.ts` — invoke が正しい引数で呼ばれる (mock)
+- [Rust] `vmc.rs` に `#[cfg(test)]` で UdpSocket binding/send の smoke test
+- [E2E] Tauri 専用のため本 PR ではスキップ (手動検証チェックリスト `docs/T-009-MANUAL-QA.md` を添付)
+**Depends on:** なし (T-007/T-008 と独立)
+**Target phase:** T-008 の次 PR (スコープ最大)
+
 ### T-005: GPU 推論フォールバック検出（deferred）
 **What:** MediaPipe が GPU → CPU にフォールバックしたことを検知し、status に通知。
 **Target phase 変更:** 「**beta ユーザーから「重い」フィードバックが 3 件以上来てから**」。

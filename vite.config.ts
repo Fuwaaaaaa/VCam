@@ -14,6 +14,6 @@ export default defineConfig({
     outDir: 'dist',
   },
   optimizeDeps: {
-    exclude: ['@mediapipe/face_mesh', '@mediapipe/camera_utils'],
+    exclude: ['@mediapipe/face_mesh'],
   },
 });

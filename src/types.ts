@@ -32,6 +32,9 @@ export type Settings = {
   /** ポストエフェクト Bloom (Phase F) */
   bloom?: boolean;
   bloomStrength?: number;   // 0..3
+  /** T-007: 選択されたカメラ/マイクの deviceId。null = OS 既定 */
+  cameraDeviceId?: string | null;
+  micDeviceId?: string | null;
 };
 
 /** Kalidokit.Pose.solve の返り値のサブセット (上半身のみ使用) */
@@ -71,7 +74,6 @@ declare global {
   interface Window {
     __faceMeshCdnFailed?: boolean;
     __poseCdnFailed?: boolean;
-    __cameraUtilsCdnFailed?: boolean;
   }
 }
 

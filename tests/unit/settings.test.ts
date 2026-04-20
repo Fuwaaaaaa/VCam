@@ -31,6 +31,8 @@ describe('loadSettings', () => {
       transparentBg: true,
       bloom: true,
       bloomStrength: 1.5,
+      cameraDeviceId: 'cam-42',
+      micDeviceId: 'mic-99',
     };
     saveSettings(custom);
     expect(loadSettings()).toEqual(custom);
@@ -64,6 +66,16 @@ describe('normalize', () => {
     });
     expect(s.legStrength).toBe(0);
     expect(s.hipPosStrength).toBe(1);
+  });
+
+  it('preserves string deviceIds and drops non-string junk', () => {
+    const s1 = normalize({ cameraDeviceId: 'abc', micDeviceId: 'def' });
+    expect(s1.cameraDeviceId).toBe('abc');
+    expect(s1.micDeviceId).toBe('def');
+
+    const s2 = normalize({ cameraDeviceId: 123 as unknown as string, micDeviceId: null });
+    expect(s2.cameraDeviceId).toBeNull();
+    expect(s2.micDeviceId).toBeNull();
   });
 
   it('coerces non-boolean toggles to defaults', () => {
