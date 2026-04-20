@@ -11,6 +11,8 @@ import { createPoseFilterSet, resetPoseFilterSet } from './core/filters/poseFilt
 import { MicTracker } from './core/audio/micLevel';
 import { createTracker } from './core/tracking/tracker';
 import { listDevices } from './core/devices/enumerate';
+import { createRecorder, isRecordingSupported } from './core/capture/recorder';
+import { captureCanvasPNG, downloadBlob, defaultFilename } from './core/capture/screenshot';
 import { createStatus } from './ui/status';
 import { wireDropZone } from './ui/dropZone';
 import { wireControls } from './ui/controls';
@@ -288,6 +290,50 @@ if (typeof navigator !== 'undefined' && navigator.mediaDevices?.addEventListener
 
 // permission 取得前でも deviceId だけは列挙される (label は空)。初期化時に一度呼ぶ。
 refreshDeviceSelects().catch(() => {});
+
+// ==================== Capture: screenshot + recording (T-008) ====================
+const snapBtn = $<HTMLButtonElement>('snap-btn');
+const recBtn  = $<HTMLButtonElement>('rec-btn');
+
+snapBtn.addEventListener('click', async () => {
+  try {
+    const blob = await captureCanvasPNG(renderer.domElement);
+    downloadBlob(blob, defaultFilename('png'));
+    status.set('スクショを保存しました');
+  } catch (e) {
+    status.set(`スクショ失敗: ${(e as Error).message}`);
+  }
+});
+
+if (isRecordingSupported()) {
+  const recorder = createRecorder(renderer.domElement);
+  recBtn.addEventListener('click', async () => {
+    if (!recorder.isRecording()) {
+      try {
+        recorder.start();
+        recBtn.classList.add('recording');
+        recBtn.textContent = '⏹ 録画停止';
+      } catch (e) {
+        status.set(`録画開始失敗: ${(e as Error).message}`);
+      }
+      return;
+    }
+    try {
+      const blob = await recorder.stop();
+      downloadBlob(blob, defaultFilename('webm'));
+      status.set('録画を保存しました');
+    } catch (e) {
+      status.set(`録画停止失敗: ${(e as Error).message}`);
+    } finally {
+      recBtn.classList.remove('recording');
+      recBtn.textContent = '⏺ 録画開始';
+    }
+  });
+} else {
+  recBtn.disabled = true;
+  recBtn.title = 'このブラウザは MediaRecorder に対応していません';
+  recBtn.style.opacity = '0.4';
+}
 
 // ==================== Animation loop ====================
 const clock = new THREE.Clock();
