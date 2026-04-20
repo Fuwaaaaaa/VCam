@@ -37,10 +37,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": {
+      "../public/samples/*": "./samples/"
+    },
     "category": "Entertainment",
     "shortDescription": "VRM avatar face and body tracking",
     "longDescription": "Desktop app that mirrors your webcam motion onto a VRM avatar — face, expressions, lip-sync, gaze, upper/lower body. Output via OBS window capture or virtual camera.",
     "copyright": "",
-    "licenseFile": null
+    "licenseFile": "../LICENSE"
   }
 }

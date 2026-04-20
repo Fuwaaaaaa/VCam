@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **サンプル VRM 同梱の足回り (T-001 scaffold)**: `public/samples/` ディレクトリ
+  と Tauri `bundle.resources` 設定を準備。`docs/SAMPLE_VRM_ATTRIBUTION.md` テンプ
+  レを追加し、再配布可能な VRM が後続 PR で配置された時点で自動 load される。
+  E2E テスト `tests/e2e/sample-vrm.spec.ts` は `test.skip` で scaffold 済。
 - **CDN/モデル読み込み失敗の通知 (T-003)**: MediaPipe (`face_mesh.js` / `pose.js`
   / `camera_utils.js`) の CDN script 本体が 404 やネットワーク失敗で読み込めな
   かった場合、起動時に status パネルに「顔認識ライブラリのダウンロードに失敗
