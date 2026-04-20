@@ -23,6 +23,10 @@ export type Tracker = {
   start: () => Promise<void>;
   stop: () => void;
   enablePose: (on: boolean) => void;
+  /** FaceMesh の onResults が一度でも呼ばれるまで待つ (tflite/wasm 解決確認) */
+  waitForFaceActive: (timeoutMs: number) => Promise<boolean>;
+  /** Pose の onResults が一度でも呼ばれるまで待つ */
+  waitForPoseActive: (timeoutMs: number) => Promise<boolean>;
 };
 
 /**
@@ -78,5 +82,7 @@ export async function createTracker(
     start: () => cam.start(),
     stop: () => { cam.stop(); face.close(); pose.close(); },
     enablePose: (on) => { poseEnabled = on; },
+    waitForFaceActive: (ms) => face.waitForActive(ms),
+    waitForPoseActive: (ms) => pose.waitForActive(ms),
   };
 }

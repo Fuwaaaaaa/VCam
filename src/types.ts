@@ -63,6 +63,18 @@ export type PoseRig = {
   RightLowerLeg?: Vector3;
 };
 
+/**
+ * index.html の MediaPipe CDN script タグに付けた onerror フックがセットするフラグ。
+ * boot() で起動時に検査し、ロード失敗時はトラッカー初期化前にユーザーへ通知する。
+ */
+declare global {
+  interface Window {
+    __faceMeshCdnFailed?: boolean;
+    __poseCdnFailed?: boolean;
+    __cameraUtilsCdnFailed?: boolean;
+  }
+}
+
 /** blend shape 値マップ (ExpressionManager に送る前の中間表現) */
 export type ExpressionValues = {
   blinkLeft: number;

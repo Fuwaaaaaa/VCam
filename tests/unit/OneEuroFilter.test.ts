@@ -54,4 +54,26 @@ describe('OneEuroFilter', () => {
     expect(a).toBeGreaterThan(0);
     expect(a).toBeLessThan(1);
   });
+
+  // T-004 仮説検証の regression test (2026-04-20)
+  // 仮説 (TODOS T-004): 同値 × 異 t での連続 filter() が derivative を 0 退化させ、
+  //                     直後の急変への追従が鈍る → seq ガードが必要。
+  // 検証結果: 仮説 FALSIFIED。OneEuroFilter は xPrev/dxPrev/tPrev のみ状態保持し、
+  //           同値連続では dxPrev=0 が維持される (init 直後と同等)。次の遷移で
+  //           dx = (newX - xPrev)/dt が独立に再推定されるため追従は劣化しない。
+  it('同値の連続呼出で warm up しても、直後の遷移は init 直後と同じ追従を示す (T-004 regression)', () => {
+    const warmedUp = new OneEuroFilter(1.0, 0.007, 1.0);
+    warmedUp.filter(0.5, 0);
+    warmedUp.filter(0.5, 1 / 60);
+    warmedUp.filter(0.5, 2 / 60);
+    warmedUp.filter(0.5, 3 / 60);
+    warmedUp.filter(0.5, 4 / 60);
+    const yWarmed = warmedUp.filter(1.0, 5 / 60);
+
+    const fresh = new OneEuroFilter(1.0, 0.007, 1.0);
+    fresh.filter(0.5, 0);
+    const yFresh = fresh.filter(1.0, 1 / 60);
+
+    expect(yWarmed).toBeCloseTo(yFresh, 10);
+  });
 });

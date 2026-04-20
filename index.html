@@ -117,10 +117,10 @@
     MediaPipe の npm 版は UMD-only で ESM import を提供しないため、CDN script で
     window.FaceMesh / window.Camera をロードする。型定義は node_modules 経由で参照。
   -->
-  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js"></script>
-  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js" onerror="window.__faceMeshCdnFailed=true"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" onerror="window.__poseCdnFailed=true"></script>
   <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/selfie_segmentation.js"></script>
-  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" onerror="window.__cameraUtilsCdnFailed=true"></script>
 
   <script type="module" src="/src/main.ts"></script>
 </body>
