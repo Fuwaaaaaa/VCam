@@ -36,3 +36,4 @@ src-tauri/Cargo.lock
 # Local-only large assets
 # サンプル VRM を samples/ に置く想定。その他 root 直下の .vrm は ignore
 /*.vrm
+.gstack/
