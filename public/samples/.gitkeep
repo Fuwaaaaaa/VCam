@@ -1,0 +1,19 @@
+# Sample VRM directory
+
+This directory holds optional sample VRM files served at `/samples/*.vrm`
+by Vite (web build) and bundled into desktop installers via Tauri's
+`bundle.resources` (see `src-tauri/tauri.conf.json`).
+
+The runtime checks for `/samples/sample.vrm` at boot (`src/main.ts:294`).
+If present, it is auto-loaded; if absent, the user is prompted to drag a
+`.vrm` file into the drop zone.
+
+## How to add a sample VRM
+
+1. Verify the model's license **explicitly permits redistribution** —
+   including inside a closed-source desktop installer (Tauri NSIS / DMG /
+   AppImage / DEB). Many VRoid Hub / VRChat-origin avatars do not.
+2. Copy the file here as `sample.vrm`.
+3. Fill in the attribution row in `docs/SAMPLE_VRM_ATTRIBUTION.md`.
+4. Remove this `.gitkeep` (or leave it — git tracks both fine).
+5. Re-enable the `test.skip` in `tests/e2e/sample-vrm.spec.ts`.
