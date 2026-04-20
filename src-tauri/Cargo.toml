@@ -1,9 +1,9 @@
 [package]
 name = "vcam"
-version = "0.1.0-beta.1"
+version = "0.1.0-beta.2"
 description = "VRM avatar face and body tracking"
 authors = ["VCam contributors"]
-license = ""
+license = "MIT"
 repository = ""
 edition = "2021"
 rust-version = "1.77.2"

@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Pending
+
+- **T-001 part 2/2** (実 VRM ファイル同梱): `public/samples/sample.vrm`
+  に CC0 の VRoid Studio サンプル (例: AvatarSample_F) を配置し、
+  `docs/SAMPLE_VRM_ATTRIBUTION.md` の sample.vrm 行を埋め、
+  `tests/e2e/sample-vrm.spec.ts` の `test.skip` を `test` に戻す。
+  人手 (ライセンス確認 + ファイル取得) を要するため次回リリースに繰越。
+
+---
+
+## [0.1.0-beta.2] — 2026-04-20
+
+トラッキング起動失敗の可視化 (T-003) を中心とした patch リリース。
+ライセンスファイルとサンプル VRM 同梱の足回りも整備。
+
 ### Added
 
 - **サンプル VRM 同梱の足回り (T-001 scaffold)**: `public/samples/` ディレクトリ
@@ -32,6 +47,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   が falsified。`OneEuroFilter` は同値連続呼出で derivative が退化せず、追従
   劣化は発生しないため不要と判定。`tests/unit/OneEuroFilter.test.ts` に
   regression test を追加。
+
+### Project meta
+
+- `LICENSE` (MIT) を repo root に追加 (`package.json` / `Cargo.toml` /
+  `tauri.conf.json` の license フィールドも同期)。
+- `CLAUDE.md` (AI agent 指示) と `DESIGN.md` (デザインシステム) を追加。
+- `docs/SAMPLE_VRM_ATTRIBUTION.md` 候補節を 3 オプションの調査結果に置換
+  (CC0 サンプル / AliciaSolid / VRoid Hub case-by-case)。
+
+### Build & test
+
+- 79 unit tests / 7 E2E tests (2 skipped pending T-001 part 2/2)
+- TypeScript strict mode で型チェック全通
 
 ---
 
@@ -125,5 +153,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/Fuwaaaaaa/VCam/compare/v0.1.0-beta.1...HEAD
+[Unreleased]: https://github.com/Fuwaaaaaa/VCam/compare/v0.1.0-beta.2...HEAD
+[0.1.0-beta.2]: https://github.com/Fuwaaaaaa/VCam/compare/v0.1.0-beta.1...v0.1.0-beta.2
 [0.1.0-beta.1]: https://github.com/Fuwaaaaaa/VCam/releases/tag/v0.1.0-beta.1
