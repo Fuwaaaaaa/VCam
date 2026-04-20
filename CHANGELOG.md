@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **録画 + スクショ機能 (T-008)**: `#controls` に 📸 スクショ / ⏺ 録画開始 ボタン
+  を追加。スクショは `canvas.toBlob` で PNG、録画は `canvas.captureStream()` +
+  `MediaRecorder` で webm (vp9 優先、vp8 / webm フォールバック)。ファイル名は
+  `vcam-YYYYMMDD-HHMMSS.{png,webm}`。録画中はボタンが `#E8482C` warn 色で
+  ブリージング点滅 (DESIGN.md 準拠)。MediaRecorder 非対応環境では録画ボタン
+  が disable される。
+- `src/core/capture/screenshot.ts` — `captureCanvasPNG(canvas)` + `downloadBlob`
+  + `defaultFilename`。
+- `src/core/capture/recorder.ts` — `createRecorder(canvas, fps=30)` / `isRecordingSupported()`。
+
 - **デバイス選択 UI (T-007)**: 複数カメラ / 複数マイクを画面左「⚙ 設定」パネル
   の `<select>` から切替可能に。選択値は localStorage (`vcam:settings:v1` の
   `cameraDeviceId` / `micDeviceId`) に永続化。`navigator.mediaDevices.devicechange`

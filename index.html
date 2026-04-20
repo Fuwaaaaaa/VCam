@@ -39,6 +39,8 @@
     #controls button { background: #2a2a2a; color: #eee; border: 1px solid #555; border-radius: 4px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
     #controls button:hover { background: #3a3a3a; }
     #controls button.active { background: #2a6b4a; border-color: #4a9; }
+    #controls button.recording { background: #E8482C; border-color: #E8482C; color: #fff; animation: rec-pulse 1.4s ease-in-out infinite; }
+    @keyframes rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
     #controls .meter { height: 6px; background: #222; border: 1px solid #555; border-radius: 3px; overflow: hidden; }
     #controls .meter > div { height: 100%; background: linear-gradient(to right, #4a9, #ac4); width: 0%; transition: width 60ms linear; }
     kbd { background: #333; padding: 1px 5px; border-radius: 3px; font-size: 11px; }
@@ -64,6 +66,8 @@
     <button id="gaze-btn" type="button" class="active" title="目線追従">👀 目線 ON</button>
     <button id="smooth-btn" type="button" class="active" title="One Euro Filter スムージング">〰 スムージング ON</button>
     <button id="pose-btn" type="button" class="active" title="上半身ポーズ追従 (Phase 3-a)">👤 ポーズ ON</button>
+    <button id="snap-btn" type="button" title="canvas を PNG で保存">📸 スクショ</button>
+    <button id="rec-btn"  type="button" title="canvas を webm で録画 (開始/停止)">⏺ 録画開始</button>
   </div>
 
   <div id="settings" class="panel">
