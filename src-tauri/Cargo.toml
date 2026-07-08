@@ -1,6 +1,6 @@
 [package]
 name = "vcam"
-version = "0.1.0-beta.2"
+version = "0.1.0-beta.3"
 description = "VRM avatar face and body tracking"
 authors = ["VCam contributors"]
 license = "MIT"

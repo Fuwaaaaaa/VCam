@@ -9,11 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Pending
+
+- **T-001 part 2/2** (実 VRM ファイル同梱): `public/samples/sample.vrm`
+  に CC0 の VRoid Studio サンプル (例: AvatarSample_F) を配置し、
+  `docs/SAMPLE_VRM_ATTRIBUTION.md` の sample.vrm 行を埋め、
+  `tests/e2e/sample-vrm.spec.ts` の `test.skip` を `test` に戻す。
+  人手 (ライセンス確認 + ファイル取得) を要するため次回リリースに繰越。
+- **VCam VRM Converter の実環境検証**: `docs/qa/KNOWN_ISSUES.md` の C1
+  (asmdef の VRChat SDK 参照不足) を解消し、Unity 2022.3 + VRChat SDK3 +
+  UniVRM 0.128.0+ で `docs/qa/VRM_CONVERTER_QA.md` の手動 QA を完走したら
+  プレビューを解除する。
+
+---
+
+## [0.1.0-beta.3] — 2026-07-08
+
+リモートピアの入力検証 + XSS 修正を含む**セキュリティリリース**。マルチバース
+機能を使う場合は更新を推奨。機能面ではデバイス選択 (T-007) と録画 + スクショ
+(T-008) を追加。Unity 変換ツール「VCam VRM Converter」を**実験的プレビュー**
+として同梱 (実環境未検証 — 下記 Known issues 参照)。
+
 ### Added
 
-- **VCam VRM Converter (Unity エディタ拡張)**: VRChat の改変済みアバターを
-  VCam で読み込める VRM 0.x に変換する無料ツールを `unity/jp.vcam.vrm-converter/`
-  に追加。有料の VRM Converter for VRChat (500 円) が不要に。
+- **VCam VRM Converter (Unity エディタ拡張、⚠️ 実験的プレビュー)**: VRChat の
+  改変済みアバターを VCam で読み込める VRM 0.x に変換する無料ツールを
+  `unity/jp.vcam.vrm-converter/` に追加。将来的に有料の VRM Converter for
+  VRChat (500 円) を置き換える予定だが、**現時点では実環境での動作検証が
+  完了していない** (下記 Known issues)。
   - ウィザード UI (アバター選択 → ライセンス確認 → 検証 → 設定 → エクスポート)。
     元アバターには触れず複製に対して変換する非破壊設計
   - viseme 15 種 → VRM 5 母音、まばたき (Blink_L/R は名前ヒューリスティック)、
@@ -64,13 +87,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   外部 CDN 依存が 1 本減少 (`camera_utils.js` / `__cameraUtilsCdnFailed` フック
   を削除)。`MicTracker.enable()` に `{ deviceId }` オプションを追加。
 
-### Pending
+### Known issues
 
-- **T-001 part 2/2** (実 VRM ファイル同梱): `public/samples/sample.vrm`
-  に CC0 の VRoid Studio サンプル (例: AvatarSample_F) を配置し、
-  `docs/SAMPLE_VRM_ATTRIBUTION.md` の sample.vrm 行を埋め、
-  `tests/e2e/sample-vrm.spec.ts` の `test.skip` を `test` に戻す。
-  人手 (ライセンス確認 + ファイル取得) を要するため次回リリースに繰越。
+- **VCam VRM Converter は実験的プレビュー**。実環境 (Unity 2022.3 + VRChat
+  SDK3 + UniVRM) での動作検証が完了しておらず、特に C1 (asmdef が VRChat SDK
+  アセンブリを参照せず、SDK 導入環境でコンパイル不能) が未解消。既知問題の
+  一覧は `docs/qa/KNOWN_ISSUES.md` 参照。確実に変換したい場合は
+  `docs/VRCHAT_TO_VRM.md` 記載の有料ツール経路 (VRM Converter for VRChat)
+  を推奨。
+- Tauri の CSP は未設定 (本リリースで実 XSS 経路は修正済み。CSP は多層防御
+  として今後設定予定 — `docs/qa/KNOWN_ISSUES.md` L1 参照)。
+
+### Build & test
+
+- 121 unit tests / 12 E2E tests (2 skipped pending T-001 part 2/2)
+- TypeScript strict mode で型チェック全通 / Vite production build 成功
 
 ---
 
@@ -208,6 +239,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/Fuwaaaaaa/VCam/compare/v0.1.0-beta.2...HEAD
+[Unreleased]: https://github.com/Fuwaaaaaa/VCam/compare/v0.1.0-beta.3...HEAD
+[0.1.0-beta.3]: https://github.com/Fuwaaaaaa/VCam/compare/v0.1.0-beta.2...v0.1.0-beta.3
 [0.1.0-beta.2]: https://github.com/Fuwaaaaaa/VCam/compare/v0.1.0-beta.1...v0.1.0-beta.2
 [0.1.0-beta.1]: https://github.com/Fuwaaaaaa/VCam/releases/tag/v0.1.0-beta.1
