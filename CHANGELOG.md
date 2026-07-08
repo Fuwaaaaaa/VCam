@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **VCam VRM Converter (Unity エディタ拡張)**: VRChat の改変済みアバターを
+  VCam で読み込める VRM 0.x に変換する無料ツールを `unity/jp.vcam.vrm-converter/`
+  に追加。有料の VRM Converter for VRChat (500 円) が不要に。
+  - ウィザード UI (アバター選択 → ライセンス確認 → 検証 → 設定 → エクスポート)。
+    元アバターには触れず複製に対して変換する非破壊設計
+  - viseme 15 種 → VRM 5 母音、まばたき (Blink_L/R は名前ヒューリスティック)、
+    視線、ViewPosition → FirstPerson の自動マッピング
+  - lilToon → MToon のマテリアル近似変換 (影/アウトライン/エミッション/透過)、
+    Poiyomi 最小変換 (ロック検出)、汎用フォールバック
+  - VRCPhysBone → VRMSpringBone 近似変換 (係数調整 UI 付き、カプセルコライダは
+    球近似)。EditMode ユニットテスト同梱
+  - 配布は UPM git URL (`?path=unity/jp.vcam.vrm-converter`)。要 UniVRM v0.128.0+
+- `docs/qa/VRM_CONVERTER_QA.md` — 変換ツールの手動 QA チェックリスト
 - **録画 + スクショ機能 (T-008)**: `#controls` に 📸 スクショ / ⏺ 録画開始 ボタン
   を追加。スクショは `canvas.toBlob` で PNG、録画は `canvas.captureStream()` +
   `MediaRecorder` で webm (vp9 優先、vp8 / webm フォールバック)。ファイル名は
@@ -44,6 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `docs/VRCHAT_TO_VRM.md` / `README.md` — VRChat アバターの変換手順を有料ツール
+  前提から VCam VRM Converter 前提に全面改訂
 - Tracker の frame driver を `@mediapipe/camera_utils` (`window.Camera`) から
   独自の `getUserMedia` + rAF ループに置換。deviceId 指定を可能にするため。
   外部 CDN 依存が 1 本減少 (`camera_utils.js` / `__cameraUtilsCdnFailed` フック
