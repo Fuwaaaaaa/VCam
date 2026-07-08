@@ -2,11 +2,22 @@
 
 VCam は「VRM」という形式のアバターしか読み込めません。VRChat で使っている
 アバターは別の形式なので、そのままでは使えません。このページでは、VRChat の
-アバターを **VCam 公式の無料変換ツール「VCam VRM Converter」** で VRM に変換して
-VCam に持ってくる手順を、できるだけ専門用語を減らして説明します。
+アバターを VRM に変換して VCam に持ってくる手順を、できるだけ専門用語を
+減らして説明します。
 
-> 💡 以前ここで案内していた有料ツール (VRM Converter for VRChat / 500 円) は
-> 不要になりました。改変済みのアバターもそのまま変換できます。
+変換ツールは 2 つの選択肢があります:
+
+| 経路 | ツール | 費用 | 状態 |
+|---|---|---|---|
+| **A (推奨)** | [VRM Converter for VRChat](https://booth.pm/ja/items/1025226) | 500 円ほど | 実績多数・安定 |
+| **B (実験的)** | VCam VRM Converter (本リポジトリ付属) | 無料 | ⚠️ プレビュー版・実環境未検証 |
+
+> ⚠️ **VCam VRM Converter (経路 B) は現在プレビュー版です。** 実環境 (Unity +
+> VRChat SDK) での動作検証が完了しておらず、**既知の不具合により導入自体に
+> 失敗することがあります** (詳細: [`docs/qa/KNOWN_ISSUES.md`](qa/KNOWN_ISSUES.md))。
+> 確実に変換したい場合は **経路 A** を使ってください。経路 B を試して問題が
+> あれば [GitHub Issues](https://github.com/Fuwaaaaaa/VCam/issues) への報告を
+> 歓迎します。
 
 ---
 
@@ -59,8 +70,9 @@ Booth などで買ったアバターには「使っていい範囲」が決ま�
 | **Unity Hub + Unity Editor 2022.3 LTS** | https://unity.com/download | 無料 |
 | **VRChat Creator Companion (VCC)** | https://vrchat.com/home/download | 無料 |
 | **変換元のアバター (改変済みの Unity プロジェクトでも OK)** | Booth などで購入したもの | アバター代 |
-| **UniVRM (v0.128.0 以上)** | 下の手順でインストール | 無料 |
-| **VCam VRM Converter (本ツール)** | 下の手順でインストール | 無料 |
+| 経路 A: **VRM Converter for VRChat** | https://booth.pm/ja/items/1025226 | 500 円ほど |
+| 経路 B: **UniVRM (v0.128.0 以上)** | 下の手順でインストール | 無料 |
+| 経路 B: **VCam VRM Converter (⚠️ プレビュー版)** | 下の手順でインストール | 無料 |
 
 ※ 変換作業だけで PC のストレージを **5〜10GB** ほど使います。余裕を見て準備を。
 
@@ -75,14 +87,14 @@ Booth などで買ったアバターには「使っていい範囲」が決ま�
     └──────────┬───────────┘
                ▼
     ┌──────────────────────┐
-    │ UniVRM +              │
-    │ VCam VRM Converter    │
-    │ をインストール         │
+    │ 変換ツールを           │
+    │ インストール           │
+    │ (経路 A または B)      │
     └──────────┬───────────┘
                ▼
     ┌──────────────────────┐
-    │ メニュー「VCam」→      │
-    │ 変換ウィザードを実行    │
+    │ 変換ツールで          │
+    │ .vrm にエクスポート    │
     └──────────┬───────────┘
                ▼
     ┌──────────────────────┐
@@ -96,7 +108,9 @@ Booth などで買ったアバターには「使っていい範囲」が決ま�
 
 ---
 
-## 🪜 手順 (クリックごとに書いています)
+## 🪜 共通の下準備 (ステップ 1〜3)
+
+経路 A / B のどちらでも、まずここから始めます。
 
 ### ステップ 1: Unity を入れる
 
@@ -131,7 +145,49 @@ Booth などで買ったアバターには「使っていい範囲」が決ま�
    のやつ) を、画面左上の **「Hierarchy」** パネルにドラッグ&ドロップ
 6. アバターが画面中央に現れれば成功
 
-### ステップ 4: UniVRM と変換ツールを入れる
+---
+
+## 🅰 経路 A (推奨): VRM Converter for VRChat で変換
+
+実績のある有料ツール (500 円ほど) を使う経路です。確実に変換したい場合は
+こちらを使ってください。
+
+### ステップ 4-A: 変換ツールを入れる
+
+1. Booth で [VRM Converter for VRChat](https://booth.pm/ja/items/1025226) を購入
+2. ダウンロードした `.unitypackage` を Unity の `Assets` にドラッグ&ドロップ
+3. **「Import」** で取り込む
+
+### ステップ 5-A: VRM としてエクスポート
+
+1. 画面左上 **「Hierarchy」** パネルでアバター (ステップ 3 で追加したもの) を
+   クリックして選択
+2. 画面上の **「VRM0」** メニュー (VRM Converter を入れると現れる) →
+   **「Export VRM file...」**
+3. 出てきた画面で必要事項を入れる:
+   - **Title**: アバターの名前
+   - **Author**: 自分の名前 (または配布元の名前)
+   - **Version**: `1.0` など
+   - **ライセンス項目**: 購入したアバターの規約に従ってチェック
+   - **Force T Pose**: ✅ 必ずチェック (ポーズがずれるのを防ぐ)
+4. **「Convert & Save…」** をクリック
+5. 保存先を聞かれるので、分かりやすい場所 (デスクトップ等) に保存
+6. `.vrm` ファイルが生成されれば完了 🎉 →
+   [VCam に読み込ませる](#-最後に-vcam-に読み込ませる-共通) へ
+
+> 💡 アバターが真っ黒になる場合は、変換前にマテリアルを「Standard」か
+> 「MToon」に変えるか、ツールの「Force MToon」系オプションを有効にしてから
+> 再エクスポートしてください。
+
+---
+
+## 🅱 経路 B (実験的): VCam VRM Converter で変換
+
+> ⚠️ **再掲: この経路はプレビュー版です。** 導入自体に失敗する既知の不具合が
+> あります ([`docs/qa/KNOWN_ISSUES.md`](qa/KNOWN_ISSUES.md))。うまくいかない
+> 場合は経路 A に切り替えてください。
+
+### ステップ 4-B: UniVRM と変換ツールを入れる
 
 どちらも Unity の **Package Manager** から URL を貼るだけで入ります。
 
@@ -157,7 +213,7 @@ https://github.com/Fuwaaaaaa/VCam.git?path=unity/jp.vcam.vrm-converter
 > → 「Import」でも導入できます。その場合も 1 つ目・2 つ目の UniVRM は URL で
 > 先にインストールしてください。
 
-### ステップ 5: 変換ウィザードを実行する
+### ステップ 5-B: 変換ウィザードを実行する
 
 1. メニュー **「VCam」→「VRChat → VRM 変換ウィザード...」** を開く
 2. ウィンドウの指示に沿って上から順に進めます:
@@ -174,7 +230,9 @@ https://github.com/Fuwaaaaaa/VCam.git?path=unity/jp.vcam.vrm-converter
 > 💡 元のアバターは一切変更されません。変換はシーン内に作られる複製
 > (`〇〇_VRM`) に対して行われます。
 
-### ステップ 6: VCam に読み込ませる
+---
+
+## 📥 最後に: VCam に読み込ませる (共通)
 
 1. VCam アプリを起動
 2. 画面左下の「ここに **.vrm** をドラッグ&ドロップ」と書かれた枠に、
@@ -187,8 +245,13 @@ https://github.com/Fuwaaaaaa/VCam.git?path=unity/jp.vcam.vrm-converter
 
 ### Q1. アバターが **真っ黒 / 真っ白** で何も見えない
 
-A. 本ツールは lilToon / Poiyomi のマテリアルを自動で MToon (VRM 用) に変換する
-ため、通常は起きません。それでも起きる場合:
+A. VRChat で使っていた lilToon などのシェーダが VRM に対応していないためです。
+
+**経路 A の場合**: 変換前にマテリアルを「Standard」か「MToon」に変えるか、
+ツールの「Force MToon」系オプションを有効にして再エクスポートしてください。
+
+**経路 B の場合**: ツールが lilToon / Poiyomi を自動で MToon (VRM 用) に変換
+するため、通常は起きません。それでも起きる場合:
 
 - ウィザードの「検証を実行」や変換後の警告に **「変換方法が不明」** と出ていた
   シェーダは変換されていません。Unity で該当マテリアルを「Standard」か
@@ -196,10 +259,10 @@ A. 本ツールは lilToon / Poiyomi のマテリアルを自動で MToon (VRM �
 - Poiyomi で **「ロックされています」** とエラーが出た場合は、マテリアルを
   右クリック → **Thry → Unlock Material(s)** してから再変換
 
-### Q2. **髪やスカートが揺れない / 揺れ方が変**
+### Q2. **髪やスカートが揺れない / 揺れ方が変** (経路 B)
 
-A. VRChat の「PhysBone」は本ツールが VRM の揺れもの (SpringBone) に自動変換
-しますが、**計算方法が違うため揺れ方は完全には一致しません**。
+A. VRChat の「PhysBone」は VCam VRM Converter が VRM の揺れもの (SpringBone)
+に自動変換しますが、**計算方法が違うため揺れ方は完全には一致しません**。
 
 - 揺れすぎる / 揺れない場合は、ウィザードの **「詳細設定 (揺れの係数)」** で
   係数を調整して再変換してください
@@ -259,7 +322,8 @@ Booth で **「VRM」「VRM 対応」** で検索してみてください。
 
 ## 📚 参考リンク
 
-- VCam VRM Converter (本ツール、このリポジトリ内): `unity/jp.vcam.vrm-converter/`
+- VRM Converter for VRChat (経路 A・有料): https://booth.pm/ja/items/1025226
+- VCam VRM Converter (経路 B・このリポジトリ内): `unity/jp.vcam.vrm-converter/`
 - VRM 公式: https://vrm.dev/
 - UniVRM: https://github.com/vrm-c/UniVRM
 - VRoid Studio: https://vroid.com/studio

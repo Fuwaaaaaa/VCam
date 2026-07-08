@@ -83,15 +83,24 @@
 ## 🎨 VRChat のアバターを使いたい
 
 VRChat 用のアバターは **そのままでは使えません**。Unity で VRM 形式に変換する
-必要があります。変換には VCam 公式の無料ツール
-**「VCam VRM Converter」** (このリポジトリの `unity/jp.vcam.vrm-converter/`)
-が使えます。詳しい手順は **[docs/VRCHAT_TO_VRM.md](docs/VRCHAT_TO_VRM.md)**
-をご覧ください。
+必要があります。方法は 2 つ — 詳しい手順はどちらも
+**[docs/VRCHAT_TO_VRM.md](docs/VRCHAT_TO_VRM.md)** をご覧ください。
 
-要約:
+| 経路 | ツール | 費用 | 状態 |
+|---|---|---|---|
+| **A (推奨)** | [VRM Converter for VRChat](https://booth.pm/ja/items/1025226) | 500 円ほど | 実績多数・安定 |
+| **B (実験的)** | VCam VRM Converter (本リポジトリ付属) | 無料 | ⚠️ プレビュー版 |
+
+> ⚠️ **VCam VRM Converter (経路 B) は現在プレビュー版です。** 実環境での動作
+> 検証が完了しておらず、既知の不具合により導入に失敗することがあります
+> ([docs/qa/KNOWN_ISSUES.md](docs/qa/KNOWN_ISSUES.md) 参照)。確実に変換したい
+> 場合は経路 A を使ってください。試した結果の報告は
+> [Issues](../../issues) で歓迎です。
+
+要約 (共通の流れ):
 1. Unity 2022.3 + VRChat SDK (VCC) を用意
-2. Package Manager に UniVRM と VCam VRM Converter の git URL を追加 (無料)
-3. メニュー「VCam → VRChat → VRM 変換ウィザード...」で変換 (マテリアルと揺れものも自動変換)
+2. 変換ツールを導入 (上の A または B)
+3. `.vrm` にエクスポート
 4. 生成した `.vrm` を VCam にドラッグ&ドロップ
 
 **⚠️ アバターのライセンスで「VRM 変換 OK」か必ず確認してください。** 禁止されて
@@ -252,7 +261,7 @@ VCam/
 - ✅ T-007 / T-008: デバイス選択 + スクショ / 録画
 
 テストカバレッジ:
-- 96 unit tests / 13 E2E tests (capture / device-selection を含む, 2 skipped)
+- 121 unit tests / 12 E2E tests (capture / device-selection を含む, 2 skipped)
 - TypeScript strict mode
 
 </details>
