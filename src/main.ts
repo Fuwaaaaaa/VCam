@@ -13,7 +13,7 @@ import { createTracker } from './core/tracking/tracker';
 import { listDevices } from './core/devices/enumerate';
 import { createRecorder, isRecordingSupported } from './core/capture/recorder';
 import { captureCanvasPNG, downloadBlob, defaultFilename } from './core/capture/screenshot';
-import { createStatus } from './ui/status';
+import { createStatus, escapeHtml } from './ui/status';
 import { wireDropZone } from './ui/dropZone';
 import { wireControls } from './ui/controls';
 import { wireSettingsPanel } from './ui/settingsPanel';
@@ -128,7 +128,7 @@ const peer = createPeerSession({
   onPeerConnect: async (id) => {
     await remoteScene.addPeer(id);
     peerUI.addPeer(id);
-    status.set(`ピアが接続: <code>${id.slice(0, 8)}…</code>`);
+    status.set(`ピアが接続: <code>${escapeHtml(id.slice(0, 8))}…</code>`);
   },
   onPeerDisconnect: (id) => {
     remoteScene.removePeer(id);
@@ -136,7 +136,6 @@ const peer = createPeerSession({
   },
   onPeerMessage: (id, msg) => {
     remoteScene.receive(id, msg);
-    if (msg.hipPos !== undefined) { /* 追加: タイムスタンプ記録など将来 */ }
   },
   onError: (err) => console.warn('[peer] error:', err),
 });
@@ -147,16 +146,16 @@ let lastSendAt = 0;
 
 // ==================== VRM loading ====================
 async function loadVRM(url: string, label?: string): Promise<void> {
-  status.set(`VRM 読込中: ${label ?? url}`);
+  status.set(`VRM 読込中: ${escapeHtml(label ?? url)}`);
   try {
     const { vrm, displayName, versionLabel } = await loadVRMFromUrl(url);
     if (currentVRM) disposeVRM(scene, currentVRM);
     scene.add(vrm.scene);
     currentVRM = vrm;
     remoteScene.setVrmUrl(url);
-    status.set(`VRM 読込完了: <b>${displayName}</b> (VRM ${versionLabel})`);
+    status.set(`VRM 読込完了: <b>${escapeHtml(displayName)}</b> (VRM ${escapeHtml(versionLabel)})`);
   } catch (e) {
-    status.set(`VRM 読込失敗: ${(e as Error).message}`);
+    status.set(`VRM 読込失敗: ${escapeHtml((e as Error).message)}`);
   }
 }
 
@@ -164,7 +163,8 @@ wireDropZone({
   dropEl,
   inputEl,
   onFile: (file) => loadVRM(URL.createObjectURL(file), file.name),
-  onInvalid: (reason) => status.set(reason),
+  // reason には攻撃者制御のファイル名が含まれるため必ずエスケープしてから innerHTML へ。
+  onInvalid: (reason) => status.set(escapeHtml(reason)),
 });
 
 // ==================== Controls (toggles) ====================
@@ -180,7 +180,7 @@ const ctrl = wireControls(
     onMicToggle: async (next) => {
       if (next) {
         try { await mic.enable({ deviceId: settings.micDeviceId }); settings.toggles.mic = true; save(); return true; }
-        catch (e) { status.set(`マイク起動失敗: ${(e as Error).message}`); return false; }
+        catch (e) { status.set(`マイク起動失敗: ${escapeHtml((e as Error).message)}`); return false; }
       }
       mic.disable();
       settings.toggles.mic = false; save();
@@ -267,7 +267,7 @@ cameraSelect.addEventListener('change', async () => {
   save();
   if (trackerRef) {
     try { await trackerRef.switchCamera(id); }
-    catch (e) { status.set(`カメラ切替失敗: ${(e as Error).message}`); }
+    catch (e) { status.set(`カメラ切替失敗: ${escapeHtml((e as Error).message)}`); }
   }
 });
 
@@ -278,7 +278,7 @@ micSelect.addEventListener('change', async () => {
   if (mic.enabled) {
     mic.disable();
     try { await mic.enable({ deviceId: id }); }
-    catch (e) { status.set(`マイク切替失敗: ${(e as Error).message}`); }
+    catch (e) { status.set(`マイク切替失敗: ${escapeHtml((e as Error).message)}`); }
   }
 });
 
@@ -301,7 +301,7 @@ snapBtn.addEventListener('click', async () => {
     downloadBlob(blob, defaultFilename('png'));
     status.set('スクショを保存しました');
   } catch (e) {
-    status.set(`スクショ失敗: ${(e as Error).message}`);
+    status.set(`スクショ失敗: ${escapeHtml((e as Error).message)}`);
   }
 });
 
@@ -314,7 +314,7 @@ if (isRecordingSupported()) {
         recBtn.classList.add('recording');
         recBtn.textContent = '⏹ 録画停止';
       } catch (e) {
-        status.set(`録画開始失敗: ${(e as Error).message}`);
+        status.set(`録画開始失敗: ${escapeHtml((e as Error).message)}`);
       }
       return;
     }
@@ -323,7 +323,7 @@ if (isRecordingSupported()) {
       downloadBlob(blob, defaultFilename('webm'));
       status.set('録画を保存しました');
     } catch (e) {
-      status.set(`録画停止失敗: ${(e as Error).message}`);
+      status.set(`録画停止失敗: ${escapeHtml((e as Error).message)}`);
     } finally {
       recBtn.classList.remove('recording');
       recBtn.textContent = '⏺ 録画開始';
@@ -338,6 +338,18 @@ if (isRecordingSupported()) {
 // ==================== Animation loop ====================
 const clock = new THREE.Clock();
 function animate(): void {
+  // フレーム処理全体を try/catch で囲む。リモートピアの不正データ等で 1 フレームが
+  // throw しても requestAnimationFrame を必ず継続し、ループが恒久停止しないようにする
+  // (isPeerMessageV1 の入力検証と合わせた多層防御)。
+  try {
+    frame();
+  } catch (e) {
+    console.error('[animate] frame error:', e);
+  }
+  requestAnimationFrame(animate);
+}
+
+function frame(): void {
   const dt = clock.getDelta();
   if (toggles.mic) {
     const lv = mic.update(settings.micSensitivity);
@@ -386,7 +398,6 @@ function animate(): void {
   }
 
   postFx.render(scene, camera);
-  requestAnimationFrame(animate);
 }
 
 // ==================== Boot ====================
@@ -411,7 +422,7 @@ async function boot(): Promise<void> {
       onPoseRig: (rig) => { latestPoseRig = rig; },
       onError: (err, phase) => {
         console.error(`[tracker:${phase}]`, err);
-        status.set(`トラッキングエラー (${phase}): ${(err as Error).message ?? err}`);
+        status.set(`トラッキングエラー (${escapeHtml(phase)}): ${escapeHtml(String((err as Error).message ?? err))}`);
       },
     }, { deviceId: settings.cameraDeviceId });
     trackerRef.enablePose(toggles.pose);
@@ -419,7 +430,7 @@ async function boot(): Promise<void> {
     // permission 取得後は label が埋まるのでデバイスリストを再同期
     refreshDeviceSelects().catch(() => {});
   } catch (e) {
-    status.set(`カメラ起動失敗: ${(e as Error).message}<br />ブラウザのカメラ許可を確認してください。`);
+    status.set(`カメラ起動失敗: ${escapeHtml((e as Error).message)}<br />ブラウザのカメラ許可を確認してください。`);
     return;
   }
 

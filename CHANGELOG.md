@@ -20,7 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `src/core/capture/screenshot.ts` — `captureCanvasPNG(canvas)` + `downloadBlob`
   + `defaultFilename`。
 - `src/core/capture/recorder.ts` — `createRecorder(canvas, fps=30)` / `isRecordingSupported()`。
-
 - **デバイス選択 UI (T-007)**: 複数カメラ / 複数マイクを画面左「⚙ 設定」パネル
   の `<select>` から切替可能に。選択値は localStorage (`vcam:settings:v1` の
   `cameraDeviceId` / `micDeviceId`) に永続化。`navigator.mediaDevices.devicechange`
@@ -28,6 +27,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `src/core/devices/enumerate.ts` — `listDevices()` が cameras/mics を分離して返す。
   permission 取得前で label が空の場合は「カメラ 1」「マイク 1」のフォールバック。
 - `Tracker.switchCamera(deviceId)` — 実行中のストリームを張り直して別カメラへ切替。
+
+### Security
+
+- **リモートピア入力検証と XSS 修正**: `isPeerMessageV1` が受信メッセージ全
+  フィールドの形状・数値有限性 (NaN/Infinity 拒否) を検証し、細工メッセージによる
+  描画崩壊やアニメーションループ停止 (受信側 DoS) を防止。多層防御として `animate()`
+  をフレーム単位 try/catch でガード。ピア ID (`src/ui/peerPanel.ts`) と不正ファイル名
+  (dropZone 経路) の innerHTML 未エスケープ経路を修正 (`escapeHtml` / DOM API 化)。
 
 ### Changed
 

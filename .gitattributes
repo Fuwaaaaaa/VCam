@@ -1,0 +1,19 @@
+# リポジトリ内はテキストを LF に正規化 (core.autocrlf 環境での CRLF 混在警告を防ぐ)
+* text=auto eol=lf
+
+# Windows 専用スクリプトは CRLF を維持
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# バイナリ (差分・改行変換の対象外)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.vrm binary
+*.unitypackage binary
+*.woff binary
+*.woff2 binary
