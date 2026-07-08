@@ -8,7 +8,9 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
-      exclude: ['src/main.ts', 'src/ui/**'],
+      // DOM 配線モジュールはユニットテスト困難なため除外するが、テスト済みの
+      // status.ts (escapeHtml — セキュリティ関数) と peerPanel.ts はカバレッジ対象に含める。
+      exclude: ['src/main.ts', 'src/ui/controls.ts', 'src/ui/dropZone.ts', 'src/ui/settingsPanel.ts'],
       reporter: ['text', 'html'],
     },
   },

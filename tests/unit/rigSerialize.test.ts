@@ -66,4 +66,50 @@ describe('isPeerMessageV1', () => {
     expect(isPeerMessageV1('{"v":1,"t":123}')).toBe(false);
     expect(isPeerMessageV1(undefined)).toBe(false);
   });
+
+  it('accepts a real encoded message (round-trip)', () => {
+    expect(isPeerMessageV1(encodeMessage({ face, pose, hipPos: { x: 0.1, y: 0.2 }, micLevel: 0.3 }))).toBe(true);
+    // null セクションも許容
+    expect(isPeerMessageV1(encodeMessage({ face: null, pose: null, hipPos: null, micLevel: 0 }))).toBe(true);
+  });
+
+  it('rejects a non-finite timestamp', () => {
+    expect(isPeerMessageV1({ v: 1, t: NaN })).toBe(false);
+    expect(isPeerMessageV1({ v: 1, t: Infinity })).toBe(false);
+    expect(isPeerMessageV1({ v: 1, t: '123' })).toBe(false);
+  });
+
+  it('rejects NaN / Infinity injected into face numbers (描画崩壊対策)', () => {
+    const bad = (head: unknown) => ({ v: 1, t: 0, face: { head, eye: { l: 0, r: 0 }, mouth: { shape: { A: 0, I: 0, U: 0, E: 0, O: 0 } } } });
+    expect(isPeerMessageV1(bad({ x: NaN, y: 0, z: 0 }))).toBe(false);
+    expect(isPeerMessageV1(bad({ x: Infinity, y: 0, z: 0 }))).toBe(false);
+    expect(isPeerMessageV1(bad({ x: 0, y: 0 }))).toBe(false); // z 欠落
+  });
+
+  it('rejects NaN injected into hipPos / micLevel', () => {
+    const base = { v: 1, t: 0 };
+    expect(isPeerMessageV1({ ...base, hipPos: { x: NaN, y: 0 } })).toBe(false);
+    expect(isPeerMessageV1({ ...base, hipPos: { x: 0 } })).toBe(false); // y 欠落
+    expect(isPeerMessageV1({ ...base, micLevel: NaN })).toBe(false);
+    expect(isPeerMessageV1({ ...base, micLevel: 'loud' })).toBe(false);
+  });
+
+  it('rejects type-confusion payloads that would throw in applyRig (受信側 DoS 対策)', () => {
+    // face が数値 → 旧実装は素通しし rig.head.x で TypeError → ループ停止していた
+    expect(isPeerMessageV1({ v: 1, t: 0, face: 123 })).toBe(false);
+    expect(isPeerMessageV1({ v: 1, t: 0, face: 'x' })).toBe(false);
+    expect(isPeerMessageV1({ v: 1, t: 0, pose: 42 })).toBe(false);
+    expect(isPeerMessageV1({ v: 1, t: 0, pose: { Hips: 7 } })).toBe(false);
+    expect(isPeerMessageV1({ v: 1, t: 0, pose: { LeftUpperArm: { x: 0, y: 0 } } })).toBe(false); // z 欠落
+  });
+
+  it('rejects a malformed mouth shape (partial vowels)', () => {
+    const msg = { v: 1, t: 0, face: { head: { x: 0, y: 0, z: 0 }, eye: { l: 0, r: 0 }, mouth: { shape: { A: 0, I: 0, U: 0, E: 0 } } } };
+    expect(isPeerMessageV1(msg)).toBe(false); // O 欠落
+  });
+
+  it('accepts a minimal valid face without optional pupil/brow', () => {
+    const msg = { v: 1, t: 0, face: { head: { x: 0, y: 0, z: 0 }, eye: { l: 0, r: 0 }, mouth: { shape: { A: 0, I: 0, U: 0, E: 0, O: 0 } } } };
+    expect(isPeerMessageV1(msg)).toBe(true);
+  });
 });

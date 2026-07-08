@@ -24,8 +24,12 @@ export function wirePeerPanel(els: PeerPanelElements, handlers: PeerPanelHandler
     for (const id of peers) {
       const row = document.createElement('div');
       row.className = 'peer-row';
-      const short = id.slice(0, 8) + '…';
-      row.innerHTML = `<span title="${id}">${short}</span>`;
+      // ピア ID は PeerJS の custom id で攻撃者が任意に選べるため innerHTML には埋め込まず、
+      // textContent / title プロパティで組み立てて HTML として解釈させない (XSS 対策)。
+      const label = document.createElement('span');
+      label.title = id;
+      label.textContent = id.slice(0, 8) + '…';
+      row.appendChild(label);
       const btn = document.createElement('button');
       btn.textContent = '×';
       btn.title = '切断';
