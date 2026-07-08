@@ -36,6 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   をフレーム単位 try/catch でガード。ピア ID (`src/ui/peerPanel.ts`) と不正ファイル名
   (dropZone 経路) の innerHTML 未エスケープ経路を修正 (`escapeHtml` / DOM API 化)。
 
+### Fixed
+
+- リモートアバターの VRM ロード中切断・同一ピア二重接続で発生していたゴースト /
+  孤児アバターの残留 (シーンに残り dispose 不能、メモリ / GPU リーク) を修正。
+  `RemoteAvatarScene.addPeer` に in-flight ロード追跡と await 後の生存再確認を追加。
+
 ### Changed
 
 - Tracker の frame driver を `@mediapipe/camera_utils` (`window.Camera`) から
