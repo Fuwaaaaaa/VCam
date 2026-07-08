@@ -83,13 +83,15 @@
 ## 🎨 VRChat のアバターを使いたい
 
 VRChat 用のアバターは **そのままでは使えません**。Unity で VRM 形式に変換する
-必要があります。詳しい手順は **[docs/VRCHAT_TO_VRM.md](docs/VRCHAT_TO_VRM.md)**
+必要があります。変換には VCam 公式の無料ツール
+**「VCam VRM Converter」** (このリポジトリの `unity/jp.vcam.vrm-converter/`)
+が使えます。詳しい手順は **[docs/VRCHAT_TO_VRM.md](docs/VRCHAT_TO_VRM.md)**
 をご覧ください。
 
 要約:
-1. Unity 2022.3 + VRChat SDK を用意
-2. 「VRM Converter for VRChat」というツールを Booth で購入 (500 円)
-3. Unity でアバターを読み込み、メニューから VRM エクスポート
+1. Unity 2022.3 + VRChat SDK (VCC) を用意
+2. Package Manager に UniVRM と VCam VRM Converter の git URL を追加 (無料)
+3. メニュー「VCam → VRChat → VRM 変換ウィザード...」で変換 (マテリアルと揺れものも自動変換)
 4. 生成した `.vrm` を VCam にドラッグ&ドロップ
 
 **⚠️ アバターのライセンスで「VRM 変換 OK」か必ず確認してください。** 禁止されて

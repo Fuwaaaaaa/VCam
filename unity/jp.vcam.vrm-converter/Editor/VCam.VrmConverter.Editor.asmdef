@@ -1,0 +1,31 @@
+{
+    "name": "VCam.VrmConverter.Editor",
+    "rootNamespace": "VCam.VrmConverter",
+    "references": [
+        "VRM",
+        "VRM.Editor",
+        "UniGLTF"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "",
+            "define": "VCAM_HAS_VRCSDK"
+        },
+        {
+            "name": "com.vrmc.univrm",
+            "expression": "",
+            "define": "VCAM_HAS_UNIVRM0"
+        }
+    ],
+    "noEngineReferences": false
+}

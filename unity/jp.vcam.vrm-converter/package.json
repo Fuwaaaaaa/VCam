@@ -1,0 +1,17 @@
+{
+  "name": "jp.vcam.vrm-converter",
+  "version": "0.1.0",
+  "displayName": "VCam VRM Converter",
+  "description": "VRChat アバター (VRCAvatarDescriptor) を VCam で読み込める VRM 0.x に変換する Unity エディタ拡張。事前に UniVRM (>= 0.128.0) と VRChat SDK3 Avatars のインストールが必要です。",
+  "unity": "2022.3",
+  "author": {
+    "name": "VCam"
+  },
+  "keywords": [
+    "vrm",
+    "vrchat",
+    "vcam",
+    "converter"
+  ],
+  "type": "tool"
+}
