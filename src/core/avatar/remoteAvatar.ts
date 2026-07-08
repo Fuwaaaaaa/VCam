@@ -17,8 +17,26 @@ export type RemoteAvatar = {
   lastMicLevel: number;
   faceFilters: RigFilterSet;
   poseFilters: PoseFilterSet;
+  slot: number;            // 配置スロット (1 始まり)。切断で空いた番号は再利用する
   rootGroup: THREE.Group;  // 位置オフセット用
 };
+
+/**
+ * 使用中スロットを避けて最小の空きスロット (1 始まり) を返す。
+ * ピア数ベースの採番だと切断→新規接続で既存ピアと同座標に重なるため、スロットで管理する。
+ */
+export function nextFreeSlot(used: Iterable<number>): number {
+  const set = new Set(used);
+  let slot = 1;
+  while (set.has(slot)) slot++;
+  return slot;
+}
+
+/** スロット番号 → X 座標。自分 (x=0) の左右に 1.5m ずつ交互に並べる (1→+1.5, 2→-1.5, 3→+3.0, …)。 */
+export function slotToX(slot: number): number {
+  const side = slot % 2 === 1 ? 1 : -1;
+  return side * Math.ceil(slot / 2) * 1.5;
+}
 
 /**
  * リモートアバター群を管理するシーン。
@@ -26,6 +44,8 @@ export type RemoteAvatar = {
  */
 export class RemoteAvatarScene {
   private avatars = new Map<string, RemoteAvatar>();
+  /** VRM ロード中のピア。await をまたぐ二重ロード防止と切断キャンセル判定に使う。 */
+  private loading = new Set<string>();
   private vrmUrl: string;
 
   constructor(private scene: THREE.Scene, vrmUrl: string) {
@@ -35,30 +55,40 @@ export class RemoteAvatarScene {
   setVrmUrl(url: string): void { this.vrmUrl = url; }
 
   async addPeer(peerId: string): Promise<void> {
-    if (this.avatars.has(peerId)) return;
+    // 登録済み or ロード中なら二重ロードしない (同一ピアの二重接続でも孤児 group を作らない)。
+    if (this.avatars.has(peerId) || this.loading.has(peerId)) return;
+    this.loading.add(peerId);
     try {
       const { vrm } = await loadVRMFromUrl(this.vrmUrl);
       const group = new THREE.Group();
       group.add(vrm.scene);
-      // 新規ピアを既存数 +1 の位置にオフセット配置 (L/R 交互)
-      const idx = this.avatars.size + 1;
-      const side = idx % 2 === 1 ? 1 : -1;
-      const x = side * Math.ceil(idx / 2) * 1.5;
-      group.position.set(x, 0, 0);
+      // await 中に removePeer された、または競合ロードが先に登録済みなら破棄する。
+      // これを怠ると切断済みピアのゴーストアバターがシーンに残り続け dispose 不能になる。
+      if (!this.loading.has(peerId) || this.avatars.has(peerId)) {
+        disposeVRM(group, vrm);
+        return;
+      }
+      const slot = nextFreeSlot([...this.avatars.values()].map((a) => a.slot));
+      group.position.set(slotToX(slot), 0, 0);
       this.scene.add(group);
       this.avatars.set(peerId, {
         peerId, vrm,
         lastFace: null, lastPose: null, lastHipPos: null, lastMicLevel: 0,
         faceFilters: createRigFilterSet(),
         poseFilters: createPoseFilterSet(),
+        slot,
         rootGroup: group,
       });
     } catch (e) {
       console.error(`[remoteAvatar] load failed for ${peerId}:`, e);
+    } finally {
+      this.loading.delete(peerId);
     }
   }
 
   removePeer(peerId: string): void {
+    // ロード中の場合はここでキャンセルを通知 (addPeer の await 後チェックが破棄する)。
+    this.loading.delete(peerId);
     const a = this.avatars.get(peerId);
     if (!a) return;
     this.scene.remove(a.rootGroup);
